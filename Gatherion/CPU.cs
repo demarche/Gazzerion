@@ -73,8 +73,15 @@ namespace Gatherion
 
             int myPatternNum = 0;
 
-            foreach (var card in candidates)
+            foreach (var card_vi in candidates.Select((v,i)=>new { v,i}))
             {
+                Card card = card_vi.v;
+                if (nest == 0&&isMe)
+                {
+                    //パーセンテージを表示
+                    Console.Write("{0, 4:f0}%", (double)(card_vi.i + 1) / candidates.Count() * 100);
+                    Console.SetCursorPosition(0, Console.CursorTop);
+                }
                 if (card == null) continue;
 
                 //カードサイズを回転に合わせる
@@ -148,7 +155,7 @@ namespace Gatherion
                 bestPattern[0].score = 1.0;
                 bestPattern[1].score = 100.0 / (nest + 1);
             }
-
+            /*
             if (nest <= 0)
             {
                 string write = "";
@@ -157,7 +164,7 @@ namespace Gatherion
                 write += string.Format("{0}/{1}", bestPattern[0].score, bestPattern[1].score);
                 if (bestPattern[isMe ? 0 : 1].innerResult != null) write += string.Format(" {0}/{1}", bestPattern[isMe ? 0 : 1].innerResult[0].score, bestPattern[isMe ? 0 : 1].innerResult[1].score);
                 Console.WriteLine(write);
-            }
+            }*/
 
             return bestPattern;
         }
@@ -175,6 +182,7 @@ namespace Gatherion
             int step = 1;
             //if (game.initiation[0] == true && game.initiation[1] == true) step = 4;
             List<resultSet> bestPat = getScore(newGame, step: step);
+            Console.WriteLine(string.Format("{0}/{1}   ", bestPat[0].score, bestPat[1].score));
 
             return bestPat[0];
         }
