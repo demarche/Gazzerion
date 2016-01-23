@@ -87,6 +87,7 @@ namespace Gatherion
                 }
             }
 
+            //山札を作成
             if (deckIndex_1p == "")
                 card_1p = Enumerable.Range(0, cardNum).Select(t => Card.RandomCardGenerator()).ToList();
             else
@@ -95,10 +96,12 @@ namespace Gatherion
                 card_2p = Enumerable.Range(0, cardNum).Select(t => Card.RandomCardGenerator()).ToList();
             else
                 card_2p = new List<Card>(Card.deckList[deckIndex_2p].Select(t => new Card(((int[])t.elems.ToArray().Clone()).ToList(), t.imgPath)));
+            //山札をシャッフル
             Card.suffleCards(ref card_1p);
             Card.suffleCards(ref card_2p);
-            Card.SerializeCards(card_1p);
+            //Card.SerializeCards(card_1p);
 
+            //ドロー
             for (int i = 0; i < handCardNum; i++)
             {
                 for (int j = 0; j < max_Player; j++)
@@ -115,6 +118,7 @@ namespace Gatherion
             Card card = is1P ? handCard_1p[handCardIndex] : handCard_2p[handCardIndex];
             if (!Field.putCard(this, fieldPt, card, cardSize, initiation)) return false;
 
+            //手札を消す
             if (is1P) handCard_1p.RemoveAt(handCardIndex);
             else handCard_2p.RemoveAt(handCardIndex);
             refleshHandcardID();
@@ -156,7 +160,7 @@ namespace Gatherion
             }
         }
 
-        //ドロー
+        //山札から手札へドロー
         public bool draw()
         {
             if (is1P && handCard_1p.Count() >= handCardNum || !is1P && handCard_2p.Count() >= handCardNum) return false;
@@ -179,7 +183,7 @@ namespace Gatherion
             return true;
         }
 
-        //情報を挿入
+        //メッセージを挿入
         public void insertInfo(string info)
         {
             messageList.Add(messageList.Count().ToString()+" "+ (now_Player + 1).ToString() + "P:" + info);

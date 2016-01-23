@@ -9,8 +9,10 @@ namespace Gatherion
 {
     class CPU
     {
-        public int me = 0;//自分のプレイヤー番号
+        //自分のプレイヤー番号
+        public int me = 0;
         Size cardSize;
+        //gameの親
         GameManager superGame = null;
 
         public CPU(int now_Player)
@@ -18,6 +20,7 @@ namespace Gatherion
             me = now_Player;
         }
 
+        //手の解
         public class resultSet
         {
             public double score;
@@ -26,21 +29,6 @@ namespace Gatherion
             
             public resultSet() { score = 1.0; card = new Card(); }
 
-        }
-
-        bool cardListCompare(List<Card> cards1, List<Card> cards2)
-        {
-            if (cards1.Count() != cards2.Count()) return false;
-
-            for(int i = 0; i < cards1.Count(); i++)
-            {
-                if (cards1[i].elems.Count() != cards2[i].elems.Count()) return false;
-                for(int j = 0; j < cards1[i].elems.Count(); j++)
-                {
-                    if (cards1[i].elems[j] != cards2[i].elems[j]) return false;
-                }
-            }
-            return true;
         }
 
         /// <summary>
@@ -61,14 +49,13 @@ namespace Gatherion
                 return new List<resultSet>() { new resultSet(), new resultSet() };
             }
 
-            //置ける場所取得
+            //手の候補取得
             List<Card> candidates = Field.getCandidates(game);
-
-            //フィールドサイズ取得
+            
             Field[,] field = game.field;
             Size fieldSize = game.fieldSize;
 
-            //場所のスコア
+            //候補のスコア
             List<List<resultSet>> scores = new List<List<resultSet>>();
 
             int myPatternNum = 0;

@@ -64,8 +64,8 @@ namespace Gatherion
             int handCardNum = 3;
             int wait = 60;
             bool isCPU = false;
-            Draw draw= new Draw(fieldSize, cardSize);
             GameManager game = new GameManager(deckNum, handCardNum, fieldSize, cardSize);
+            Draw draw = new Draw(game);
             CPU cpu = new CPU(0);
 
             DX.ChangeWindowMode(1);
@@ -95,6 +95,7 @@ namespace Gatherion
                 mouse_state = getMouse(out mousePoint);
                 if(mousePoint==new Point())
                 {
+                    //マウス座標
                     int mx = 0, my = 0;
                     DX.GetMousePoint(out mx, out my);
                     mousePoint = new Point(mx, my);
@@ -102,6 +103,7 @@ namespace Gatherion
 
                 if (state >= 0)
                 {
+                    //描画
                     draw.DrawGrid();
                     draw.DrawFieldCard(game);
                     draw.DrawAssist(game, candidates, moving_hand_cur);
@@ -126,7 +128,7 @@ namespace Gatherion
                             state = -2;
                         break;
                     case 0://初期化
-                        draw = new Draw(fieldSize, cardSize);
+                        draw = new Draw(game);
                         game = new GameManager(deckNum, handCardNum, fieldSize, cardSize, deck_1P, deck_2P);
                         if (isCPU) cpu = new CPU(1);
                         //置ける場所の候補取得

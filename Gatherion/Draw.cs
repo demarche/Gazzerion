@@ -24,14 +24,14 @@ namespace Gatherion
         //開始位置
         Point GridStart;
         //カードの大きさ
+        Size cardScale;
         Size cardSize;
-        Size cardBlock;
 
         //init
-        public Draw(Size fieldSize, Size cardBlock)
+        public Draw(GameManager game)
         {
-            this.fieldSize = fieldSize;
-            this.cardBlock = cardBlock;
+            fieldSize = game.fieldSize;
+            cardSize = game.cardSize;
 
             //グリッドの色
             LineCol = DX.GetColor(255, 255, 255);
@@ -46,7 +46,9 @@ namespace Gatherion
                 {
                     {0,DX.GetColor(255,0,0) },{1,DX.GetColor(0,0,255)},{2,DX.GetColor(0,0,0) },{3,DX.GetColor(0,255,0) },{4,DX.GetColor(255,255,0) }
                 };
-            cardSize = new Size((int)(grid_len * this.cardBlock.Width), (int)(grid_len * this.cardBlock.Height));
+
+            //カードの大きさ
+            cardScale = new Size((int)(grid_len * cardSize.Width), (int)(grid_len * cardSize.Height));
         }
 
         //勝利メッセージ描画
@@ -72,18 +74,18 @@ namespace Gatherion
             //山札枚数
             //1P
             uint deckCol = DX.GetColor(255, 255, 255);
-            Point deck_1P = new Point(GridStart.X / 2 - cardSize.Width / 2, screenSize.Height - (int)(grid_len * 2) - cardSize.Height);
+            Point deck_1P = new Point(GridStart.X / 2 - cardScale.Width / 2, screenSize.Height - (int)(grid_len * 2) - cardScale.Height);
             string decknum_1P = game.card_1p.Count().ToString();
             int decknumLen_1P = DX.GetDrawStringWidth(decknum_1P, decknum_1P.Length);
-            DX.DrawBox(deck_1P.X, deck_1P.Y, deck_1P.X + cardSize.Width, deck_1P.Y + cardSize.Height, deckCol, 1);
-            DX.DrawString(deck_1P.X + cardSize.Width / 2 - decknumLen_1P / 2, deck_1P.Y + cardSize.Height / 2- DX.GetFontSize()/2, decknum_1P, DX.GetColor(0, 0, 0));
+            DX.DrawBox(deck_1P.X, deck_1P.Y, deck_1P.X + cardScale.Width, deck_1P.Y + cardScale.Height, deckCol, 1);
+            DX.DrawString(deck_1P.X + cardScale.Width / 2 - decknumLen_1P / 2, deck_1P.Y + cardScale.Height / 2- DX.GetFontSize()/2, decknum_1P, DX.GetColor(0, 0, 0));
             //2P
-            Point deck_2P = new Point(screenSize.Width/2 + (GridStart.X + (int)(grid_len * fieldSize.Width)) / 2 - cardSize.Width / 2,
+            Point deck_2P = new Point(screenSize.Width/2 + (GridStart.X + (int)(grid_len * fieldSize.Width)) / 2 - cardScale.Width / 2,
                  (int)(grid_len));
             string decknum_2P = game.card_2p.Count().ToString();
             int decknumLen_2P = DX.GetDrawStringWidth(decknum_2P, decknum_2P.Length);
-            DX.DrawBox(deck_2P.X, deck_2P.Y, deck_2P.X + cardSize.Width, deck_2P.Y + cardSize.Height, deckCol, 1);
-            DX.DrawString(deck_2P.X + cardSize.Width / 2 - decknumLen_2P / 2, deck_2P.Y + cardSize.Height / 2 - DX.GetFontSize() / 2, decknum_2P, DX.GetColor(0, 0, 0));
+            DX.DrawBox(deck_2P.X, deck_2P.Y, deck_2P.X + cardScale.Width, deck_2P.Y + cardScale.Height, deckCol, 1);
+            DX.DrawString(deck_2P.X + cardScale.Width / 2 - decknumLen_2P / 2, deck_2P.Y + cardScale.Height / 2 - DX.GetFontSize() / 2, decknum_2P, DX.GetColor(0, 0, 0));
 
             //現在のプレイヤー表示
             string msg = (game.is1P ? "1" : "2") + "Pの番です";
@@ -92,7 +94,7 @@ namespace Gatherion
 
             //メッセージ表示
             int showMessage = 4;
-            Point msgPt = new Point(GridStart.X + (int)(grid_len * (fieldSize.Width + 1)), deck_2P.Y + cardSize.Height+ DX.GetFontSize());
+            Point msgPt = new Point(GridStart.X + (int)(grid_len * (fieldSize.Width + 1)), deck_2P.Y + cardScale.Height+ DX.GetFontSize());
             DX.DrawBox(msgPt.X, msgPt.Y, msgPt.X + DX.GetFontSize() * 8, msgPt.Y + DX.GetFontSize() * showMessage, DX.GetColor(128, 128, 128), 1);
             foreach(var elem in game.messageList.Reverse<string>().Take(showMessage).Select((v,i) => new { v, i }))
             {
@@ -191,27 +193,20 @@ namespace Gatherion
             int x = 0, y = 0, fix_x = 0, fix_y = 0;
             Point fieldPt = new Point(-1, -1);
 
-            if (true)
+            //カードの中心座標を取得
+            x = mouse.X - cardScale.Width / 2;
+            y = mouse.Y - cardScale.Height / 2;
+            fix_x = cardSize.Width - 1;
+            fix_y = cardSize.Height - 1;
+            if (card.turn % 2 == 1)
             {
-                x = mouse.X - cardSize.Width / 2;
-                y = mouse.Y - cardSize.Height / 2;
-                fix_x = cardBlock.Width - 1;
-                fix_y = cardBlock.Height - 1;
-                if (card.turn % 2 == 1)
-                {
-                    x = mouse.X - cardSize.Height / 2;
-                    y = mouse.Y - cardSize.Width / 2;
-                    fix_x = cardBlock.Height - 1;
-                    fix_y = cardBlock.Width - 1;
-                }
-            }
-            else
-            {
-                x = mouse.X;
-                y = mouse.Y;
+                x = mouse.X - cardScale.Height / 2;
+                y = mouse.Y - cardScale.Width / 2;
+                fix_x = cardSize.Height - 1;
+                fix_y = cardSize.Width - 1;
             }
 
-
+            //グリッドにフィットさせる
             if (x >= GridStart.X && y >= GridStart.Y &&
                 x < GridStart.X + grid_len * (fieldSize.Width - fix_x) && y < GridStart.Y + grid_len * (fieldSize.Height - fix_y))
             {
@@ -329,7 +324,7 @@ namespace Gatherion
             List<int> elems = card.elems;
             int turn = card.turn;
 
-            if (cardSize == new Size()) cardSize = new Size(this.cardSize.Width + 1, this.cardSize.Height + 1);
+            if (cardSize == new Size()) cardSize = new Size(this.cardScale.Width + 1, this.cardScale.Height + 1);
             Size cardSizeOrg = new Size((Point)cardSize);
             if (turn % 2 == 1) cardSize = new Size(cardSize.Height, cardSize.Width);
 

@@ -12,12 +12,6 @@ namespace Gatherion
         public Card card = null;//フィールドの左上にカード配置
         public int connector = -1;//コネクター
         public int group = -1;
-        public class CanPutInfo
-        {
-            public int turn;
-            public int cardIndex;
-            public CanPutInfo(int turn, int cardIndex) { this.turn = turn; this.cardIndex = cardIndex; }
-        }
 
         static int connector_group = -1;
 
@@ -216,7 +210,7 @@ namespace Gatherion
         public static int Burst(GameManager game, Size cardSize, int group)
         {
             int groupSum = 0;
-            Size fieldSize = new Size(game.field.GetLength(0), game.field.GetLength(1));
+            Size fieldSize = game.fieldSize;
 
             for (int x = 0; x < fieldSize.Width; x++)
             {
@@ -411,7 +405,7 @@ namespace Gatherion
                             card.v.turn = turn;
                             if (canPut(game.field, new Point(x, y), card.v, mycardSize, is1P, game.initiation, true))
                             {
-                                //低バーストでもない場合は詰みでない
+                                //低バーストでもない場合は候補に追加
                                 if (!isLowBurst(game, new Point(x, y), card.v, mycardSize))
                                 {
                                     Card cand = new Card(card.v);
