@@ -194,9 +194,9 @@ namespace Gatherion
 
                         //バースト
                         bool[] isBurst = new bool[] { false, false };
-                        for (int i = 0; i < 2; i++)
+                        for (int i = 0; i < game.max_Player; i++)
                         {
-                            if (Field.isBurst(game, cardSize, i) && Field.getSheetsNumber(game, i) >= 3)
+                            if (Field.isBurst(game, cardSize, i))
                             {
                                 isBurst[i] = true;
                             }

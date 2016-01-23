@@ -158,9 +158,15 @@ namespace Gatherion
         }
 
         //バーストチェック
-        public static bool isBurst(GameManager game, Size cardSize, int group)
+        public static bool isBurst(GameManager game, Size cardSize, int group, List<int> ignoreGroup = null)
         {
-            Size fieldSize = new Size(game.field.GetLength(0), game.field.GetLength(1));
+            Size fieldSize = game.fieldSize;
+
+            //最初の呼び出しは再帰に自分を含めない
+            if (ignoreGroup == null) {
+                ignoreGroup = new List<int>();
+                ignoreGroup.Add(group);
+            }
 
             Card card = new Card(new List<int> { -1, -1, -1, -1 });
             card.testCard = group;
@@ -178,8 +184,27 @@ namespace Gatherion
                         card.turn = turn;
                         if (canPut(game.field, new Point(x, y), card, mycardSize, group == 0, game.initiation, true))
                         {
-                            card.turn = 0;
-                            return false;
+                            List<int> newIgnoreGroup = new List<int>(ignoreGroup);
+
+                            //別グループの低バーストによる配置不可能を利用したバースト検証
+                            List<bool> lowBurstList = new List<bool>();
+                            fillCard(game.field, new Point(x, y), card, mycardSize);
+                            for (int i = 0; i < game.max_Player; i++)
+                            {
+                                if (newIgnoreGroup.Contains(i)) continue;
+                                newIgnoreGroup.Add(i);
+
+                                //低バースト
+                                if (getSheetsNumber(game, i) < 3 && isBurst(game, cardSize, i, newIgnoreGroup))
+                                {
+                                    lowBurstList.Add(true);
+                                }
+                            }
+                            unfillCard(game.field, new Point(x, y), mycardSize);
+
+                            //低バーストがない場合はバーストしない
+                            if (lowBurstList.Count() == 0)
+                                return false;
                         }
                     }
                 }
@@ -314,16 +339,16 @@ namespace Gatherion
 
             return groupCardNum;
         }
-
+        
         //低バーストチェック
-        public static bool isLowBurst(GameManager game, Point putAt, Card card,Size cardSize)
+        public static bool isLowBurst(GameManager game, Point putAt, Card card, Size cardSize)
         {
             //一時的に埋める
             int tmpConnect = fillCard(game.field, putAt, card, cardSize);
             bool tmpInit = game.initiation[tmpConnect];
             game.initiation[tmpConnect] = false;
 
-            for (int i = 0; i < 2; i++)
+            for (int i = 0; i < game.max_Player; i++)
             {
                 //バーストチェック
                 if (!isBurst(game, cardSize, i))
