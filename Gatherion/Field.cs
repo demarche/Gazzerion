@@ -18,7 +18,7 @@ namespace Gatherion
             public int cardIndex;
             public CanPutInfo(int turn, int cardIndex) { this.turn = turn; this.cardIndex = cardIndex; }
         }
-        public List<CanPutInfo> canPutInfo = new List<CanPutInfo>();//配置可能カード情報
+        //public List<CanPutInfo> canPutInfo = new List<CanPutInfo>();//配置可能カード情報
 
         static int connector_group = -1;
 
@@ -346,27 +346,23 @@ namespace Gatherion
         }
 
         /// <summary>
-        /// 詰みチェック
-        /// 兼置ける場所の記録
+        /// 配置可能場所リスト生成
         /// </summary>
         /// <param name="game"></param>
         /// <param name="cardSize"></param>
         /// <returns></returns>
-        public static bool isCheckmate(GameManager game, Size cardSize)
+        public static List<Card> getCandidates(GameManager game)
         {
-            bool is1P = game.is1P;
-            Size fieldSize = new Size(game.field.GetLength(0), game.field.GetLength(1));
+            //候補
+            List<Card> candidates = new List<Card>();
 
-            //前回のアシスト情報クリア
-            for (int x = 0; x < fieldSize.Width; x++)
-            {
-                for (int y = 0; y < fieldSize.Height; y++)
-                {
-                    game.field[x, y].canPutInfo = new List<CanPutInfo>();
-                }
-            }
+            bool is1P = game.is1P;
+            Size cardSize = game.cardSize;
+            Size fieldSize = game.fieldSize;
+
             foreach (var card in (is1P ? game.handCard_1p : game.handCard_2p).Select((v, i) => new { v, i }))
             {
+                if (card.v == null) continue;
                 for (int x = 0; x < fieldSize.Width; x++)
                 {
                     for (int y = 0; y < fieldSize.Height; y++)
@@ -386,7 +382,10 @@ namespace Gatherion
                                 {/*
                                     card.turn = 0;
                                     return false;*/
-                                    game.field[x, y].canPutInfo.Add(new CanPutInfo(card.v.turn, card.i));
+                                    //game.field[x, y].canPutInfo.Add(new CanPutInfo(card.v.turn, card.i));
+                                    Card cand = new Card(card.v);
+                                    cand.point = new Point(x, y);
+                                    candidates.Add(cand);
                                 }
                             }
                         }
@@ -395,19 +394,15 @@ namespace Gatherion
                 card.v.turn = 0;
             }
 
-            //カードが置ける場所の候補がない場合false
-            return Enumerable.Range(0, fieldSize.Width).Select(x => Enumerable.Range(0, fieldSize.Height).Select(y =>
-            game.field[x, y].canPutInfo.Count())//アシストの個数
-            .Count(t => t != 0))//アシストの個数が0でないもの
-            .Count(t => t != 0)//アシストの個数が0でないものの個数
-            == 0;
+            return candidates;
         }
 
         //カード配置
-        public static bool putCard(GameManager game, Point putAt, Card card, Size cardSize, bool is1P, bool[] initiation)
+        public static bool putCard(GameManager game, Point putAt, Card card, Size cardSize, bool[] initiation)
         {
             Field[,] field = game.field;
-            Size fieldSize = new Size(field.GetLength(0), field.GetLength(1));
+            Size fieldSize = game.fieldSize;
+            bool is1P = game.is1P;
             int turn = card.turn;
 
             //カードサイズをターンにあわせる

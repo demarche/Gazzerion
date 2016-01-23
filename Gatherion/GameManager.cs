@@ -16,11 +16,14 @@ namespace Gatherion
         public int skillPt_1p = 0;
         public int skillPt_2p = 0;
 
-        public int now_Player = 0;//現在の手番
+        //現在の手番
+        public int now_Player = 0;
+        //最大プレイヤー人数
         public int max_Player = 2;
         int cardNum;
 
-        public int handCardNum;//手札枚数
+        //手札枚数
+        public int handCardNum;
 
         public bool is1P
         {
@@ -38,7 +41,7 @@ namespace Gatherion
 
         public bool[] initiation = new bool[2] { true, true };
 
-        Size fieldSize;
+        public Size fieldSize;
         public Size cardSize;
         public Field[,] field;
         public List<string> messageList;
@@ -110,10 +113,11 @@ namespace Gatherion
         public bool handToField(Point fieldPt, int handCardIndex)
         {
             Card card = is1P ? handCard_1p[handCardIndex] : handCard_2p[handCardIndex];
-            if (!Field.putCard(this, fieldPt, card, cardSize, is1P,initiation)) return false;
+            if (!Field.putCard(this, fieldPt, card, cardSize, initiation)) return false;
 
             if (is1P) handCard_1p.RemoveAt(handCardIndex);
             else handCard_2p.RemoveAt(handCardIndex);
+            refleshHandcardID();
 
             return true;
         }
@@ -142,6 +146,16 @@ namespace Gatherion
             initiation[group] = true;
         }
 
+        //手札番号更新
+        public void refleshHandcardID()
+        {
+
+            for (int i = 0; i < (is1P ? handCard_1p : handCard_2p).Count(); i++)
+            {
+                (is1P ? handCard_1p : handCard_2p)[i].handCardID = i;
+            }
+        }
+
         //ドロー
         public bool draw()
         {
@@ -158,6 +172,9 @@ namespace Gatherion
                 handCard_2p.Add(card_2p.First());
                 card_2p.RemoveAt(0);
             }
+
+            //手札番号更新
+            refleshHandcardID();
 
             return true;
         }

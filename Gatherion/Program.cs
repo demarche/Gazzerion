@@ -73,14 +73,20 @@ namespace Gatherion
             DX.SetGraphMode(1280, 720, 32);
             DX.SetDrawScreen(DX.DX_SCREEN_BACK);
 
+            //山札のロード
             Card.LoadDeck();
 
-            int state = -1;//ゲームの状態
-            int moving_hand_cur = -1;//移動中の手札の番号
-            bool isAlreadyCheckmate = false;//前の人が詰んでいたか
+            //ゲームの状態
+            int state = -1;
+            //移動中の手札の番号
+            int moving_hand_cur = -1;
+            //前の人が詰んでいたか
+            bool isAlreadyCheckmate = false;
             int mouse_state = 0;
             int wheel;
             string deck_1P = "", deck_2P = "";
+            //置ける場所の候補
+            List<Card> candidates = new List<Card>();
 
             while (DX.ScreenFlip() == 0 && DX.ProcessMessage() == 0 && DX.ClearDrawScreen() == 0)
             {
@@ -98,7 +104,7 @@ namespace Gatherion
                 {
                     draw.DrawGrid();
                     draw.DrawFieldCard(game);
-                    draw.DrawAssist(game, moving_hand_cur);
+                    draw.DrawAssist(game, candidates, moving_hand_cur);
                     hand_cur = draw.DrawHandCard(game, moving_hand_cur, mousePoint);
                 }
 
@@ -123,7 +129,8 @@ namespace Gatherion
                         draw = new Draw(fieldSize, cardSize);
                         game = new GameManager(deckNum, handCardNum, fieldSize, cardSize, deck_1P, deck_2P);
                         if (isCPU) cpu = new CPU(1);
-                        Field.isCheckmate(game, cardSize);
+                        //置ける場所の候補取得
+                        candidates = Field.getCandidates(game);
                         state = 1;
                         break;
                     case 1://手札選択
@@ -216,7 +223,8 @@ namespace Gatherion
                         //ドロー
                         game.draw();
                         //詰み
-                        if (Field.isCheckmate(game, cardSize))
+                        candidates = Field.getCandidates(game);
+                        if (candidates.Count()==0)
                         {
                             if (isAlreadyCheckmate)
                             {
@@ -224,7 +232,7 @@ namespace Gatherion
                                 waitAndUpdate(draw, game, wait, state);
                                 isAlreadyCheckmate = false;
                                 game.clearField();
-                                Field.isCheckmate(game, cardSize);
+                                candidates = Field.getCandidates(game);
                                 state = 1;
                             }
                             else
@@ -254,10 +262,10 @@ namespace Gatherion
 
                         var cpu_res = cpu.choice(game);
                         if (cpu.me == 0)
-                            game.handCard_1p[cpu_res.index].turn = cpu_res.turn;
+                            game.handCard_1p[cpu_res.card.handCardID].turn = cpu_res.card.turn;
                         else
-                            game.handCard_2p[cpu_res.index].turn = cpu_res.turn;
-                        game.handToField(cpu_res.pt, cpu_res.index);
+                            game.handCard_2p[cpu_res.card.handCardID].turn = cpu_res.card.turn;
+                        game.handToField(cpu_res.card.point, cpu_res.card.handCardID);
 
                         //勝利判定
                         if (game.card_1p.Count() == 0 && game.handCard_1p.Count() == 0 ||

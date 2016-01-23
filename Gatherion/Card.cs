@@ -22,6 +22,9 @@ namespace Gatherion
         //回転
         [XmlIgnore]
         public int turn = 0;
+        //手札のID
+        [XmlIgnore]
+        public int handCardID = -1;
         //テスト用カード（配置可能検証用）
         [XmlIgnore]
         public int testCard = -1;
@@ -41,6 +44,18 @@ namespace Gatherion
             elems = elements;
             this.imgPath = imgPath;
         }
+
+        //カードのクローン
+        public Card(Card card)
+        {
+            elems = new List<int>(card.elems);
+            imgPath = card.imgPath;
+            point = new Point(card.point.X, card.point.Y);
+            turn = card.turn;
+            handCardID = card.handCardID;
+            testCard = card.testCard;
+        }
+
         public Card() { }
 
         //シリアライザ

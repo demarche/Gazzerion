@@ -133,25 +133,18 @@ namespace Gatherion
         }
 
         //アシスト表示
-        public void DrawAssist(GameManager game, int handCur)
+        public void DrawAssist(GameManager game, List<Card> candidates, int handCardCur)
         {
-            for (int x = 0; x < fieldSize.Width; x++)
+            foreach (var card in candidates)
             {
-                for (int y = 0; y < fieldSize.Height; y++)
-                {
-                    foreach(var canPutInfo in game.field[x, y].canPutInfo)
-                    {
-                        if (canPutInfo.cardIndex == handCur && canPutInfo.turn == (game.is1P ? game.handCard_1p : game.handCard_2p)[handCur].turn)
-                        {
-                            Size mycardSize = new Size(cardBlock.Width, cardBlock.Height);
-                            if (canPutInfo.turn % 2 == 1) mycardSize = new Size(mycardSize.Height, mycardSize.Width);
+                if (card.handCardID != handCardCur || card.turn != (game.is1P ? game.handCard_1p : game.handCard_2p)[handCardCur].turn) continue;
 
-                            DX.DrawBox(GridStart.X + (int)(grid_len * x), GridStart.Y + (int)(grid_len * y),
-                                GridStart.X + (int)(grid_len * (x + mycardSize.Width)), GridStart.Y + (int)(grid_len * (y + mycardSize.Height)),
-                                DX.GetColor(0, 128, 0), 1);
-                        }
-                    }
-                }
+                Size mycardSize = new Size(game.cardSize.Width, game.cardSize.Height);
+                if (card.turn % 2 == 1) mycardSize = new Size(mycardSize.Height, mycardSize.Width);
+
+                DX.DrawBox(GridStart.X + (int)(grid_len * card.point.X), GridStart.Y + (int)(grid_len * card.point.Y),
+                    GridStart.X + (int)(grid_len * (card.point.X + mycardSize.Width)), GridStart.Y + (int)(grid_len * (card.point.Y + mycardSize.Height)),
+                    DX.GetColor(0, 128, 0), 1);
             }
         }
 
