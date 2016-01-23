@@ -18,7 +18,6 @@ namespace Gatherion
             public int cardIndex;
             public CanPutInfo(int turn, int cardIndex) { this.turn = turn; this.cardIndex = cardIndex; }
         }
-        //public List<CanPutInfo> canPutInfo = new List<CanPutInfo>();//配置可能カード情報
 
         static int connector_group = -1;
 
@@ -295,8 +294,29 @@ namespace Gatherion
             field[putAt.X, putAt.Y].card = null;
         }
 
+        //バースト時のカード枚数取得
+        public static int getSheetsNumber(GameManager game, int group)
+        {
+            int groupSum = 0;
+            Size fieldSize = game.fieldSize;
+            Size cardSize = game.cardSize;
+
+            for (int x = 0; x < fieldSize.Width; x++)
+            {
+                for (int y = 0; y < fieldSize.Height; y++)
+                {
+                    if (game.field[x, y].group == group)
+                        groupSum++;
+                }
+            }
+            int cardProduct = cardSize.Width * cardSize.Height;
+            int groupCardNum = groupSum / cardProduct;
+
+            return groupCardNum;
+        }
+
         //低バーストチェック
-        public static bool isLowBurst(GameManager game, Point putAt, Card card, Size cardSize)
+        public static bool isLowBurst(GameManager game, Point putAt, Card card,Size cardSize)
         {
             //一時的に埋める
             int tmpConnect = fillCard(game.field, putAt, card, cardSize);
@@ -311,19 +331,8 @@ namespace Gatherion
                     continue;
                 }
 
-                int groupSum = 0;
-                Size fieldSize = new Size(game.field.GetLength(0), game.field.GetLength(1));
-
-                for (int x = 0; x < fieldSize.Width; x++)
-                {
-                    for (int y = 0; y < fieldSize.Height; y++)
-                    {
-                        if (game.field[x, y].group == i)
-                            groupSum++;
-                    }
-                }
-                int cardProduct = cardSize.Width * cardSize.Height;
-                int groupCardNum = groupSum / cardProduct;
+                //バースト枚数取得
+                int groupCardNum = getSheetsNumber(game, i);
 
                 if (groupCardNum < 3)
                 {
@@ -379,10 +388,7 @@ namespace Gatherion
                             {
                                 //低バーストでもない場合は詰みでない
                                 if (!isLowBurst(game, new Point(x, y), card.v, mycardSize))
-                                {/*
-                                    card.turn = 0;
-                                    return false;*/
-                                    //game.field[x, y].canPutInfo.Add(new CanPutInfo(card.v.turn, card.i));
+                                {
                                     Card cand = new Card(card.v);
                                     cand.point = new Point(x, y);
                                     candidates.Add(cand);
