@@ -9,10 +9,8 @@ namespace Gatherion
 {
     class GameManager
     {
-        public List<Card> card_1p;
-        public List<Card> card_2p;
-        public List<Card> handCard_1p = new List<Card>();
-        public List<Card> handCard_2p = new List<Card>();
+        public List<Card>[] deck;
+        public List<Card>[] handCard;
         public int skillPt_1p = 0;
         public int skillPt_2p = 0;
         //手札使用可能状況
@@ -35,13 +33,31 @@ namespace Gatherion
             }
         }
 
+        //現在のプレイヤーの手札
+        public List<Card> nowHandCard
+        {
+            get
+            {
+                return handCard[now_Player];
+            }
+        }
+
+        //現在のプレイヤーの山札
+        public List<Card> nowDeck
+        {
+            get
+            {
+                return deck[now_Player];
+            }
+        }
+
         //手番交代
         public void next()
         {
             now_Player = (now_Player + 1) % max_Player;
         }
 
-        public bool[] initiation = new bool[2] { true, true };
+        public bool[] initiation;
 
         public Size fieldSize;
         public Size cardSize;
@@ -49,7 +65,7 @@ namespace Gatherion
         public List<string> messageList;
 
         //CPUの再帰用コンストラクタ
-        public GameManager(GameManager game, List<Card> handCard_1p, List<Card> handCard_2p)
+        public GameManager(GameManager game, List<Card>[] handCard)
         {
             myConstractor(game.cardNum, game.handCardNum, game.fieldSize, game.cardSize);
             for(int x = 0; x < game.fieldSize.Width; x++)
@@ -61,25 +77,28 @@ namespace Gatherion
             }
             initiation = (bool[])game.initiation.Clone();
             now_Player = game.now_Player;
-            this.handCard_1p = new List<Card>(handCard_1p);
-            this.handCard_2p = new List<Card>(handCard_2p);
+            for(int i = 0; i < handCard.Count(); i++)
+            {
+                this.handCard[i] = new List<Card>(handCard[i]);
+            }
 
         }
 
         //ゲーム開始用
-        public GameManager(int cardNum, int handCardNum, Size fieldSize, Size cardSize, string deckIndex_1p="", string deckIndex_2p="")
+        public GameManager(int cardNum, int handCardNum, Size fieldSize, Size cardSize, string[] deckIndexes = null)
         {
-            myConstractor(cardNum, handCardNum, fieldSize, cardSize, deckIndex_1p,deckIndex_2p);
+            myConstractor(cardNum, handCardNum, fieldSize, cardSize, deckIndexes);
         }
 
         //初期化処理群
-        void myConstractor(int cardNum, int handCardNum, Size fieldSize, Size cardSize, string deckIndex_1p = "", string deckIndex_2p = "")
+        void myConstractor(int cardNum, int handCardNum, Size fieldSize, Size cardSize, string[] deckIndexes = null)
         {
             this.fieldSize = fieldSize;
             this.cardSize = cardSize;
             this.cardNum = cardNum;
             this.handCardNum = handCardNum;
             messageList = new List<string>();
+            //フィールド初期化
             field = new Field[fieldSize.Width, fieldSize.Height];
             for (int x = 0; x < fieldSize.Width; x++)
             {
@@ -88,27 +107,41 @@ namespace Gatherion
                     field[x, y] = new Field();
                 }
             }
+            //カード初期化
+            deck = new List<Card>[max_Player];
+            handCard = new List<Card>[max_Player];
             handCard_Available = new bool[max_Player, handCardNum];
             for (int p = 0; p < max_Player; p++)
             {
-                for(int n = 0; n < handCardNum; n++)
+                for (int n = 0; n < handCardNum; n++)
                 {
                     handCard_Available[p, n] = true;
                 }
             }
-
             //山札を作成
-            if (deckIndex_1p == "")
-                card_1p = Enumerable.Range(0, cardNum).Select(t => Card.RandomCardGenerator()).ToList();
-            else
-                card_1p = new List<Card>(Card.deckList[deckIndex_1p].Select(t => new Card(((int[])t.elems.ToArray().Clone()).ToList(), t.imgPath)));
-            if (deckIndex_2p == "")
-                card_2p = Enumerable.Range(0, cardNum).Select(t => Card.RandomCardGenerator()).ToList();
-            else
-                card_2p = new List<Card>(Card.deckList[deckIndex_2p].Select(t => new Card(((int[])t.elems.ToArray().Clone()).ToList(), t.imgPath)));
-            //山札をシャッフル
-            Card.suffleCards(ref card_1p);
-            Card.suffleCards(ref card_2p);
+            if (deckIndexes == null) deckIndexes = new string[max_Player];
+            foreach (var deckIndex in deckIndexes.Select((v, i) => new { v, i }))
+            {
+                if (deckIndex.v == "" || deckIndex.v == null)
+                {
+                    deck[deckIndex.i] = Enumerable.Range(0, cardNum).Select(t => Card.RandomCardGenerator()).ToList();
+                }
+                else
+                {
+                    deck[deckIndex.i] = new List<Card>(Card.deckList[deckIndex.v].Select(t => new Card(((int[])t.elems.ToArray().Clone()).ToList(), t.imgPath)));
+                }
+
+                //山札をシャッフル
+                Card.suffleCards(ref deck[deckIndex.i]);
+            }
+            initiation = new bool[max_Player];
+            for(int i = 0; i < max_Player; i++)
+            {
+                //手札を作成
+                handCard[i] = new List<Card>();
+                //イニシエーション
+                initiation[i] = true;
+            }
             //Card.SerializeCards(card_1p);
 
             //ドロー
@@ -125,12 +158,11 @@ namespace Gatherion
         //手札からフィールドに
         public bool handToField(Point fieldPt, int handCardIndex)
         {
-            Card card = is1P ? handCard_1p[handCardIndex] : handCard_2p[handCardIndex];
+            Card card = nowHandCard[handCardIndex];
             if (!Field.putCard(this, fieldPt, card, cardSize, initiation)) return false;
 
             //手札を消す
-            if (is1P) handCard_1p.RemoveAt(handCardIndex);
-            else handCard_2p.RemoveAt(handCardIndex);
+            nowHandCard.RemoveAt(handCardIndex);
 
             return true;
         }
@@ -162,12 +194,11 @@ namespace Gatherion
         //手札番号更新
         public void refleshHandcardID()
         {
-            var handCard = (is1P ? handCard_1p : handCard_2p);
-            var notContainsIDs = Enumerable.Range(0, handCard.Count()).Where(t => !handCard.Select(u => u.handCardID).Contains(t)).ToList();
-            for (int i = 0; i < handCard.Count(); i++)
+            var notContainsIDs = Enumerable.Range(0, nowHandCard.Count()).Where(t => !nowHandCard.Select(u => u.handCardID).Contains(t)).ToList();
+            for (int i = 0; i < nowHandCard.Count(); i++)
             {
-                if (handCard[i].handCardID != -1) continue;
-                handCard[i].handCardID = notContainsIDs.First();
+                if (nowHandCard[i].handCardID != -1) continue;
+                nowHandCard[i].handCardID = notContainsIDs.First();
                 notContainsIDs.RemoveAt(0);
             }
         }
@@ -175,19 +206,11 @@ namespace Gatherion
         //山札から手札へドロー
         public bool draw()
         {
-            if (is1P && handCard_1p.Count() >= handCardNum || !is1P && handCard_2p.Count() >= handCardNum) return false;
-            if (is1P && card_1p.Count() == 0 || !is1P && card_2p.Count() == 0) return false;
+            if (nowHandCard.Count() >= handCardNum) return false;
+            if (nowDeck.Count() == 0) return false;
 
-            if (is1P)
-            {
-                handCard_1p.Add(card_1p.First());
-                card_1p.RemoveAt(0);
-            }
-            else
-            {
-                handCard_2p.Add(card_2p.First());
-                card_2p.RemoveAt(0);
-            }
+            nowHandCard.Add(deck[now_Player].First());
+            nowDeck.RemoveAt(0);
 
             //手札番号更新
             refleshHandcardID();

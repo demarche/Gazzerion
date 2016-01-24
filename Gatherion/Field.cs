@@ -130,7 +130,7 @@ namespace Gatherion
         }
 
         //配置可能判定
-        public static bool canPut(Field[,] field, Point putAt, Card card, Size mycardSize, bool is1P, bool[] initiation, bool isJudge = false)
+        public static bool canPut(Field[,] field, Point putAt, Card card, Size mycardSize, int now_Player, bool[] initiation, bool isJudge = false)
         {
             Size fieldSize = new Size(field.GetLength(0), field.GetLength(1));
 
@@ -138,10 +138,10 @@ namespace Gatherion
             if (collision(field, putAt, mycardSize)) return false;
 
             //イニシエーション可能
-            if (is1P && initiation[0] && putAt.Y == fieldSize.Height - mycardSize.Height || !is1P && initiation[1] && putAt.Y == 0)
+            if (initiation[now_Player] && (now_Player % 2 == 0 && putAt.Y == fieldSize.Height - mycardSize.Height || now_Player % 2 == 1 && putAt.Y == 0))
             {
-                if (!isJudge) initiation[is1P ? 0 : 1] = false;
-                connector_group = is1P ? 0 : 1;
+                if (!isJudge) initiation[now_Player] = false;
+                connector_group = now_Player;
                 return true;
             }
 
@@ -175,7 +175,7 @@ namespace Gatherion
                             mycardSize = new Size(cardSize.Height, cardSize.Width);
                         }
                         card.turn = turn;
-                        if (canPut(game.field, new Point(x, y), card, mycardSize, group == 0, game.initiation, true))
+                        if (canPut(game.field, new Point(x, y), card, mycardSize, group, game.initiation, true))
                         {
                             List<int> newIgnoreGroup = new List<int>(ignoreGroup);
 
@@ -381,12 +381,11 @@ namespace Gatherion
         {
             //候補
             List<Card> candidates = new List<Card>();
-
-            bool is1P = game.is1P;
+            
             Size cardSize = game.cardSize;
             Size fieldSize = game.fieldSize;
 
-            foreach (var card in (is1P ? game.handCard_1p : game.handCard_2p))
+            foreach (var card in game.nowHandCard)
             {
                 if (card == null) continue;
                 game.handCard_Available[game.now_Player, card.handCardID] = false;
@@ -402,7 +401,7 @@ namespace Gatherion
                                 mycardSize = new Size(cardSize.Height, cardSize.Width);
                             }
                             card.turn = turn;
-                            if (canPut(game.field, new Point(x, y), card, mycardSize, is1P, game.initiation, true))
+                            if (canPut(game.field, new Point(x, y), card, mycardSize, game.now_Player, game.initiation, true))
                             {
                                 //低バーストでもない場合は候補に追加
                                 if (!isLowBurst(game, new Point(x, y), card, mycardSize))
@@ -427,7 +426,6 @@ namespace Gatherion
         {
             Field[,] field = game.field;
             Size fieldSize = game.fieldSize;
-            bool is1P = game.is1P;
             int turn = card.turn;
 
             //カードサイズをターンにあわせる
@@ -441,12 +439,12 @@ namespace Gatherion
             bool[] oldInitiation = new bool[] { initiation[0], initiation[1] };
 
             //設置判定
-            if (!canPut(field, putAt, card, mycardSize, is1P, initiation)) return false;
+            if (!canPut(field, putAt, card, mycardSize, game.now_Player, initiation)) return false;
 
             if (isLowBurst(game, putAt, card, mycardSize))
             {
                 //イニシエーションの場合は取り消し
-                int init_group = is1P ? 0 : 1;
+                int init_group = game.now_Player;
                 if (initiation[init_group] != oldInitiation[init_group])
                     initiation[init_group] = true;
                 return false;

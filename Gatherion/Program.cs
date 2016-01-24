@@ -82,10 +82,10 @@ namespace Gatherion
             //移動中の手札の番号
             int moving_hand_cur = -1;
             //前の人が詰んでいたか
-            bool isAlreadyCheckmate = false;
+            bool[] isAlreadyCheckmate = new bool[game.max_Player];
             int mouse_state = 0;
             int wheel;
-            string deck_1P = "", deck_2P = "";
+            string[] deckIndexes = new string[game.max_Player];
             //置ける場所の候補
             List<Card> candidates = new List<Card>();
 
@@ -115,7 +115,7 @@ namespace Gatherion
                 {
                     case -2://設定
                         wheel = DX.GetMouseWheelRotVol();
-                        draw.DrawSetting(mousePoint, wheel, ref deck_1P, ref deck_2P);
+                        draw.DrawSetting(game, mousePoint, wheel, ref deckIndexes);
                         if (clickedLeft(ref mouse_state))
                             state = -1;
                         break;
@@ -130,7 +130,7 @@ namespace Gatherion
                         break;
                     case 0://初期化
                         draw = new Draw(game);
-                        game = new GameManager(deckNum, handCardNum, fieldSize, cardSize, deck_1P, deck_2P);
+                        game = new GameManager(deckNum, handCardNum, fieldSize, cardSize, deckIndexes);
                         if (isCPU) cpu = new CPU(1);
                         //置ける場所の候補取得
                         candidates = Field.getCandidates(game);
@@ -141,7 +141,7 @@ namespace Gatherion
                         {
                             state = 5;
                         }
-                        if (clickedLeft(ref mouse_state) && hand_cur != -1 && game.handCard_Available[game.now_Player, (game.is1P?game.handCard_1p:game.handCard_2p)[hand_cur].handCardID])
+                        if (clickedLeft(ref mouse_state) && hand_cur != -1 && game.handCard_Available[game.now_Player, game.nowHandCard[hand_cur].handCardID])
                         {
                             moving_hand_cur = hand_cur;
                             state = 2;
@@ -153,16 +153,8 @@ namespace Gatherion
 
                         //回転
                         wheel = DX.GetMouseWheelRotVol();
-                        if (game.is1P)
-                        {
-                            if (wheel > 0) game.handCard_1p[moving_hand_cur].turn = (game.handCard_1p[moving_hand_cur].turn + 1) % 4;
-                            if (wheel < 0) game.handCard_1p[moving_hand_cur].turn = (game.handCard_1p[moving_hand_cur].turn + 3) % 4;
-                        }
-                        else
-                        {
-                            if (wheel > 0) game.handCard_2p[moving_hand_cur].turn = (game.handCard_2p[moving_hand_cur].turn + 1) % 4;
-                            if (wheel < 0) game.handCard_2p[moving_hand_cur].turn = (game.handCard_2p[moving_hand_cur].turn + 3) % 4;
-                        }
+                        if (wheel > 0) game.nowHandCard[moving_hand_cur].turn = (game.nowHandCard[moving_hand_cur].turn + 1) % 4;
+                        if (wheel < 0) game.nowHandCard[moving_hand_cur].turn = (game.nowHandCard[moving_hand_cur].turn + 3) % 4;
 
                         //フィールドに配置
                         if (clicked && fieldPt != new Point(-1,-1))
@@ -172,8 +164,7 @@ namespace Gatherion
                             moving_hand_cur = -1;
 
                             //勝利判定
-                            if (game.card_1p.Count() == 0 && game.handCard_1p.Count() == 0 ||
-                                game.card_2p.Count() == 0 && game.handCard_2p.Count() == 0)
+                            if (Enumerable.Range(0, game.max_Player).Select(player => game.deck[player].Count() + game.handCard[player].Count()).Count(allCards => allCards == 0) > 0)
                             {
                                 state = 4;
                                 break;
@@ -227,21 +218,23 @@ namespace Gatherion
                         game.draw();
                         //詰み
                         candidates = Field.getCandidates(game);
-                        if (candidates.Count()==0)
+                        if (candidates.Count() == 0)
                         {
-                            if (isAlreadyCheckmate)
+                            if (isAlreadyCheckmate.Count(t => t) >= game.max_Player)
                             {
                                 game.insertInfo("両詰み");
                                 waitAndUpdate(draw, game, wait, state, isBurst: Enumerable.Range(0, game.max_Player).Select(t => true).ToList());
-                                isAlreadyCheckmate = false;
+                                isAlreadyCheckmate = new bool[game.max_Player];
                                 game.clearField();
+                                //手番を戻す
+                                game.next();
                                 candidates = Field.getCandidates(game);
                                 state = 1;
                             }
                             else
                             {
                                 game.insertInfo("詰み");
-                                isAlreadyCheckmate = true;
+                                isAlreadyCheckmate[game.now_Player] = true;
                                 waitAndUpdate(draw, game, wait, state);
                                 //手番を戻す
                                 game.next();
@@ -250,7 +243,7 @@ namespace Gatherion
                         }
                         else
                         {
-                            isAlreadyCheckmate = false;
+                            isAlreadyCheckmate[game.now_Player] = false;
                             state = 1;
                         }
                         break;
@@ -264,18 +257,14 @@ namespace Gatherion
                     case 5://CPU選択
 
                         var cpu_res = cpu.choice(game);
-                        var target = (game.is1P ? game.handCard_1p : game.handCard_2p);
-                        int cardCur = target.IndexOf(target.Where(t => t.handCardID == cpu_res.card.handCardID).First());
-                        if (cpu.me == 0)
-                            game.handCard_1p[cardCur].turn = cpu_res.card.turn;
-                        else
-                            game.handCard_2p[cardCur].turn = cpu_res.card.turn;
+                        int cardCur = game.nowHandCard.IndexOf(game.nowHandCard.Where(t => t.handCardID == cpu_res.card.handCardID).First());
+                        //CPUの手の回転
+                        game.handCard[cpu.me][cardCur].turn = cpu_res.card.turn;
                         if (!game.handToField(cpu_res.card.point, cardCur))
                             throw new Exception("CPU fatal error");
 
                         //勝利判定
-                        if (game.card_1p.Count() == 0 && game.handCard_1p.Count() == 0 ||
-                            game.card_2p.Count() == 0 && game.handCard_2p.Count() == 0)
+                        if (Enumerable.Range(0, game.max_Player).Select(player => game.deck[player].Count() + game.handCard[player].Count()).Count(allCards => allCards == 0) > 0)
                         {
                             state = 4;
                             break;

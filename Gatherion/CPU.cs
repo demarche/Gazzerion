@@ -14,6 +14,7 @@ namespace Gatherion
         Size cardSize;
         //gameの親
         GameManager superGame = null;
+        Random rnd = new Random();
 
         public CPU(int now_Player)
         {
@@ -25,7 +26,7 @@ namespace Gatherion
         {
             public double score;
             public Card card;
-            public List<resultSet> innerResult;
+            public resultSet[] innerResult;
             
             public resultSet() { score = 1.0; card = new Card(); }
 
@@ -39,14 +40,12 @@ namespace Gatherion
         /// <param name="isMe"></param>
         /// <param name="step"></param>
         /// <returns></returns>
-        List<resultSet> getScore(GameManager game, int nest = 0, bool isMe = true, int step = 1)
+        resultSet[] getScore(GameManager game, int nest = 0, int step = 1)
         {
-            List<Card> myHandCard = (game.now_Player == 0 ? game.handCard_1p : game.handCard_2p);
-            List<Card> yourHandCard = (game.now_Player == 1 ? game.handCard_1p : game.handCard_2p);
             //手札がない
-            if (myHandCard.Count() == 0 && yourHandCard.Count() == 0)
+            if (Enumerable.Range(0, game.max_Player).Select(player => game.handCard[player].Count()).Count(num => num != 0) == 0)
             {
-                return new List<resultSet>() { new resultSet(), new resultSet() };
+                return new resultSet[game.max_Player];
             }
 
             //手の候補取得
@@ -56,14 +55,14 @@ namespace Gatherion
             Size fieldSize = game.fieldSize;
 
             //候補のスコア
-            List<List<resultSet>> scores = new List<List<resultSet>>();
+            List<resultSet[]> scores = new List<resultSet[]>();
 
             int myPatternNum = 0;
 
             foreach (var card_vi in candidates.Select((v,i)=>new { v,i}))
             {
                 Card card = card_vi.v;
-                if (nest == 0&&isMe)
+                if (nest == 0 && game.now_Player == me)
                 {
                     //パーセンテージを表示
                     Console.Write("{0, 4:f0}%", (double)(card_vi.i + 1) / candidates.Count() * 100);
@@ -77,22 +76,28 @@ namespace Gatherion
 
                 //コネクターグループ設置用
                 List<bool> tmpInit = new List<bool>(game.initiation);
-                if (!Field.canPut(game.field, card.point, card, mycardSize, game.is1P, game.initiation))
+                if (!Field.canPut(game.field, card.point, card, mycardSize, game.now_Player, game.initiation))
                     throw new Exception("checkmate fatal error");
 
                 //手札を減らす
+                /*
                 List<Card> innerHandCard = new List<Card>(myHandCard);
                 var rmIndex = innerHandCard.IndexOf(innerHandCard.Where(t => t != null && t.handCardID == card.handCardID).First());
-                innerHandCard[rmIndex] = null;
+                innerHandCard[rmIndex] = null;*/
+                List<Card>[] innerHandCard = game.handCard.Select(cards => cards.Select(t => t == null ? null : new Card(t)).ToList()).ToArray();
+                var rmIndex = innerHandCard[game.now_Player].IndexOf(innerHandCard[game.now_Player].Where(t => t != null && t.handCardID == card.handCardID).First());
+                innerHandCard[game.now_Player][rmIndex] = null;
 
                 //フィールドに手札を置く
-                GameManager innerGame = new GameManager(game,
-                     game.now_Player == 0 ? innerHandCard : yourHandCard,
-                     game.now_Player == 1 ? innerHandCard : yourHandCard);
+                GameManager innerGame = new GameManager(game, innerHandCard);
                 int tmpConnect = Field.fillCard(innerGame.field, card.point, card, mycardSize);
                 innerGame.next();
 
-                List<resultSet> cand = new List<resultSet>() { new resultSet(), new resultSet() };
+                resultSet[] cand = new resultSet[game.max_Player];
+                for(int i = 0; i < game.max_Player; i++)
+                {
+                    cand[i] = new resultSet();
+                }
                 if (Field.isBurst(innerGame, cardSize, tmpConnect))
                 {
                     //バーストチェック
@@ -100,48 +105,68 @@ namespace Gatherion
                     if (burstNum >= 3)
                     {
                         //3以上のバーストのみスコア
-                        cand[isMe ? 0 : 1].score += (double)(100 + (burstNum - 3) * 10) / (double)(nest + 1);
-                        var tmpcand = getScore(innerGame, nest: nest + (isMe ? 0 : 1), isMe: !isMe, step: 1);
-                        cand[isMe ? 0 : 1].innerResult = tmpcand;
+                        cand[game.now_Player].score += (double)(100 + (burstNum - 3) * 10) / (nest / game.max_Player + 1);
+                        var tmpcand = getScore(innerGame, nest: nest + 1, step: 1);
+                        cand[game.now_Player].innerResult = tmpcand;
                     }
                 }
                 else
                 {
                     //バーストしない場合再帰
-                    if (!(superGame.initiation.Count(t => t == true) >= 1 && !isMe && nest >= 0))
-                        cand = getScore(innerGame, nest: nest + (isMe ? 0 : 1), isMe: !isMe, step: 1);
+                    if (!(superGame.initiation.Count(t => t == true) >= 1 && nest >= 1))
+                        cand = getScore(innerGame, nest: nest + 1, step: 1);
                 }
                 //カード情報を候補に追加
-                cand[isMe ? 0 : 1].card = new Card(card);
+                cand[game.now_Player].card = new Card(card);
                 scores.Add(cand);
 
                 //イニシエーション戻す
-                game.initiation = new bool[2] { tmpInit[0], tmpInit[1] };
+                game.initiation = new bool[game.max_Player];
+                for (int i = 0; i < game.max_Player; i++)
+                {
+                    game.initiation[i] = tmpInit[i];
+                }
 
                 myPatternNum++;
 
             }
 
             //候補から最善手を予測
-            List<resultSet> bestPattern = scores.Count() > 0 ?
-                scores.Select(t => new { v = t, score = isMe ? (t[0].score / t[1].score) : (t[1].score / t[0].score) }).Where(t => t.v[isMe ? 0 : 1].innerResult == null
-                || t.score < 100 || t.score >= 100 && t.v[isMe ? 0 : 1].innerResult[!isMe ? 0 : 1].score < 100).OrderByDescending(t => t.score).First().v :
-                new List<resultSet>() { new resultSet(), new resultSet() };
+            var noPlayerRange = Enumerable.Range(0, game.max_Player).Where(player => player != game.now_Player);
+            resultSet[] bestPattern = new resultSet[game.max_Player];
+            if (scores.Count() > 0)
+            {
+                var scorePair = scores.Select(result => new { v = result, score = (result[game.now_Player].score / noPlayerRange.Select(player => result[player].score).Sum()) });
+                var filtered = scorePair.Where(t => t.v[game.now_Player].innerResult == null || t.score < 100 || t.score >= 100 && noPlayerRange.Select(player => t.v[game.now_Player].innerResult[player].score).Count(result => result >= 100) == 0);
+                if (filtered.Count() == 0)
+                {
+                    bestPattern = scorePair.OrderByDescending(t => t.score).First().v;
+                }
+                else
+                {
+                    bestPattern = filtered.OrderByDescending(t => t.score).First().v;
+                }
+            }
+            else
+            {
+                for (int i = 0; i < game.max_Player; i++)
+                {
+                    bestPattern[i] = new resultSet();
+                }
+            }
 
             //自分の手数を追加
-            bestPattern[isMe ? 0 : 1].score += myPatternNum;
+            bestPattern[game.now_Player].score += myPatternNum;
 
-            //相手が詰みの場合ボーナス
-            if (!isMe && myPatternNum == 0 && yourHandCard.Count() > 0)
+            //詰みの場合ほかの人がボーナス
+            if (myPatternNum == 0 && game.handCard[game.now_Player].Count() > 0)
             {
-                bestPattern[0].score = 100.0 / (nest + 1);
-                bestPattern[1].score = 1.0;
-            }
-            //自分が詰みの場合ペナルティ
-            if (isMe && myPatternNum == 0 && myHandCard.Count() > 0)
-            {
-                bestPattern[0].score = 1.0;
-                bestPattern[1].score = 100.0 / (nest + 1);
+                for (int i = 0; i < game.max_Player; i++)
+                {
+                    if (i == game.max_Player) continue;
+                    bestPattern[i].score = 100.0 / (nest / game.max_Player + 1);
+
+                }
             }
             /*
             if (nest <= 0)
@@ -165,14 +190,14 @@ namespace Gatherion
         public resultSet choice(GameManager game)
         {
             cardSize = game.cardSize;
-            GameManager newGame = new GameManager(game, game.handCard_1p, game.handCard_2p);
+            GameManager newGame = new GameManager(game, game.handCard);
             superGame = game;
             int step = 1;
             //if (game.initiation[0] == true && game.initiation[1] == true) step = 4;
-            List<resultSet> bestPat = getScore(newGame, step: step);
-            Console.WriteLine(string.Format("{0}/{1}   ", bestPat[0].score, bestPat[1].score));
+            resultSet[] bestPat = getScore(newGame, step: step);
+            Console.WriteLine(string.Join("/", bestPat.Select(t => t.score.ToString())));
 
-            return bestPat[0];
+            return bestPat[game.now_Player];
         }
     }
 }

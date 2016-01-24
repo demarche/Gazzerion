@@ -75,22 +75,22 @@ namespace Gatherion
             //1P
             uint deckCol = DX.GetColor(255, 255, 255);
             Point deck_1P = new Point(GridStart.X / 2 - cardScale.Width / 2, screenSize.Height - (int)(grid_len * 2) - cardScale.Height);
-            string decknum_1P = game.card_1p.Count().ToString();
+            string decknum_1P = game.deck[0].Count().ToString();
             int decknumLen_1P = DX.GetDrawStringWidth(decknum_1P, decknum_1P.Length);
             DX.DrawBox(deck_1P.X, deck_1P.Y, deck_1P.X + cardScale.Width, deck_1P.Y + cardScale.Height, deckCol, 1);
             DX.DrawString(deck_1P.X + cardScale.Width / 2 - decknumLen_1P / 2, deck_1P.Y + cardScale.Height / 2- DX.GetFontSize()/2, decknum_1P, DX.GetColor(0, 0, 0));
             //2P
             Point deck_2P = new Point(screenSize.Width/2 + (GridStart.X + (int)(grid_len * fieldSize.Width)) / 2 - cardScale.Width / 2,
                  (int)(grid_len));
-            string decknum_2P = game.card_2p.Count().ToString();
+            string decknum_2P = game.deck[1].Count().ToString();
             int decknumLen_2P = DX.GetDrawStringWidth(decknum_2P, decknum_2P.Length);
             DX.DrawBox(deck_2P.X, deck_2P.Y, deck_2P.X + cardScale.Width, deck_2P.Y + cardScale.Height, deckCol, 1);
             DX.DrawString(deck_2P.X + cardScale.Width / 2 - decknumLen_2P / 2, deck_2P.Y + cardScale.Height / 2 - DX.GetFontSize() / 2, decknum_2P, DX.GetColor(0, 0, 0));
 
             //現在のプレイヤー表示
-            string msg = (game.is1P ? "1" : "2") + "Pの番です";
+            string msg = (game.now_Player + 1) + "Pの番です";
             int msg_len = DX.GetDrawStringWidth(msg, msg.Length);
-            DX.DrawString(deck_2P.X - msg_len / 2, screenSize.Height / 2, msg, DX.GetColor(0, 255 * (game.is1P ? 1 : 0), 255 * (game.is1P ? 0 : 1)));
+            DX.DrawString(deck_2P.X - msg_len / 2, screenSize.Height / 2, msg, DX.GetColor(0, 255 * (game.is1P ? 1 : 0), 255 * (game.now_Player)));
 
             //メッセージ表示
             int showMessage = 4;
@@ -140,8 +140,8 @@ namespace Gatherion
             if (handCardCur < 0) return;
             foreach (var card in candidates)
             {
-                if (card.handCardID != (game.is1P ? game.handCard_1p : game.handCard_2p)[handCardCur].handCardID
-                    || card.turn != (game.is1P ? game.handCard_1p : game.handCard_2p)[handCardCur].turn)
+                if (card.handCardID != game.nowHandCard[handCardCur].handCardID
+                    || card.turn != game.nowHandCard[handCardCur].turn)
                     continue;
 
                 Size mycardSize = new Size(game.cardSize.Width, game.cardSize.Height);
@@ -183,8 +183,8 @@ namespace Gatherion
         {
             int cardOnMouseNum = -1;
             bool is1P = game.is1P;
-            List<Card> card_1p = game.handCard_1p;
-            List<Card> card_2p = game.handCard_2p;
+            List<Card> card_1p = game.handCard[0];
+            List<Card> card_2p = game.handCard[1];
 
             int handCard_width = GridStart.X / game.handCardNum;
             Size handCard_size = new Size(handCard_width, handCard_width / 2 * 3);
@@ -197,7 +197,7 @@ namespace Gatherion
 
                 if (is1P && mouse.X >= x && mouse.X < x + handCard_size.Width && mouse.Y >= y && mouse.Y < y + handCard_size.Height) cardOnMouseNum = i;
                 if (is1P && i == hand_cur) continue;
-                DrawCard(x, y, card_1p[i], handCard_size, available: game.handCard_Available[0, game.handCard_1p[i].handCardID]);
+                DrawCard(x, y, card_1p[i], handCard_size, available: game.handCard_Available[0, card_1p[i].handCardID]);
             }
 
             Point HandCardStart_2P = new Point(0, (int)grid_len);
@@ -207,7 +207,7 @@ namespace Gatherion
                 int y = HandCardStart_2P.Y;
                 if (!is1P && mouse.X >= x && mouse.X < x + handCard_size.Width && mouse.Y >= y && mouse.Y < y + handCard_size.Height) cardOnMouseNum = i;
                 if (!is1P && i == hand_cur) continue;
-                DrawCard(x, y, card_2p[i], handCard_size, available: game.handCard_Available[1, game.handCard_2p[i].handCardID]);
+                DrawCard(x, y, card_2p[i], handCard_size, available: game.handCard_Available[1, card_2p[i].handCardID]);
             }
 
             return cardOnMouseNum;
@@ -217,7 +217,7 @@ namespace Gatherion
         public Point DrawMovingCard(GameManager game, int hand_cur, Point mouse)
         {
             bool is1P = game.is1P;
-            Card card = (is1P ? game.handCard_1p : game.handCard_2p)[hand_cur];
+            Card card = game.nowHandCard[hand_cur];
             int x = 0, y = 0, fix_x = 0, fix_y = 0;
             Point fieldPt = new Point(-1, -1);
 
@@ -301,49 +301,45 @@ namespace Gatherion
         }
 
         //設定描画
-        int DeckIndex_1P=0;
-        int DeckIndex_2P=0;
-        public void DrawSetting(Point mouse, int wheel, ref string deck_1p, ref string deck_2p)
+        int[] DeckIndex = null;
+        public void DrawSetting(GameManager game,Point mouse, int wheel, ref string[] deck)
         {
+            if (DeckIndex == null || DeckIndex.Length != game.max_Player) DeckIndex = new int[game.max_Player];
+
             List<string> deckList = new List<string>() {"ランダム" };
             deckList.AddRange(Card.deckList.Keys);
             int fontSize = 32;
             int defaultFontSize = DX.GetFontSize();
             DX.SetFontSize(fontSize);
             Point settingStart = new Point(fieldSize.Width / 3, fieldSize.Height / 3);
-            DX.DrawString(settingStart.X, settingStart.Y, "1Pデッキ", DX.GetColor(255, 255, 255));
-            DX.DrawString(settingStart.X, settingStart.Y + fontSize * 2, "2Pデッキ", DX.GetColor(255, 255, 255));
 
-            Point deck_1p_start = new Point(settingStart.X, settingStart.Y + fontSize);
-            Point deck_2p_start = new Point(settingStart.X, settingStart.Y + fontSize * 3);
-            deck_1p = deckList[DeckIndex_1P];
-            deck_2p = deckList[DeckIndex_2P];
-            Size deck_1p_size = new Size(DX.GetDrawStringWidth(deck_1p, deck_1p.Length), fontSize);
-            Size deck_2p_size = new Size(DX.GetDrawStringWidth(deck_2p, deck_2p.Length), fontSize);
-
-            //move index
-            if (mouse.X >= deck_1p_start.X && mouse.X < deck_1p_start.X + deck_1p_size.Width &&
-                mouse.Y >= deck_1p_start.Y && mouse.Y < deck_1p_start.Y + deck_1p_size.Height)
+            for(int i = 0; i < game.max_Player; i++)
             {
-                if (wheel > 0) DeckIndex_1P = (DeckIndex_1P + 1) % deckList.Count();
-                if (wheel < 0) DeckIndex_1P = (DeckIndex_1P + deckList.Count() - 1) % deckList.Count();
-            }
-            if (mouse.X >= deck_2p_start.X && mouse.X < deck_2p_start.X + deck_2p_size.Width &&
-                mouse.Y >= deck_2p_start.Y && mouse.Y < deck_2p_start.Y + deck_2p_size.Height)
-            {
-                if (wheel > 0) DeckIndex_2P = (DeckIndex_2P + 1) % deckList.Count();
-                if (wheel < 0) DeckIndex_2P = (DeckIndex_2P + deckList.Count() - 1) % deckList.Count();
-            }
-            DX.DrawString(deck_1p_start.X, deck_1p_start.Y, deck_1p, DX.GetColor(255, 0, 255));
-            DX.DrawString(deck_2p_start.X, deck_2p_start.Y, deck_2p, DX.GetColor(255, 0, 255));
+                DX.DrawString(settingStart.X, settingStart.Y, (i + 1) + "Pデッキ", DX.GetColor(255, 255, 255));
+                //デッキ情報の開始位置
+                Point deck_start = new Point(settingStart.X, settingStart.Y + fontSize * (i * 2 + 1));
 
-            if (deck_1p == "ランダム")
-                deck_1p = "";
-            if (deck_2p == "ランダム")
-                deck_2p = "";
+                deck[i] = deckList[DeckIndex[i]];
+
+                //デッキ情報のサイズ
+                Size deck_size = new Size(DX.GetDrawStringWidth(deck[i], deck[i].Length), fontSize);
+
+                //move index
+                if (mouse.X >= deck_start.X && mouse.X < deck_start.X + deck_size.Width &&
+                    mouse.Y >= deck_start.Y && mouse.Y < deck_start.Y + deck_size.Height)
+                {
+                    if (wheel > 0) DeckIndex[i] = (DeckIndex[i] + 1) % deckList.Count();
+                    if (wheel < 0) DeckIndex[i] = (DeckIndex[i] + deckList.Count() - 1) % deckList.Count();
+                }
+
+                //デッキ情報描画
+                DX.DrawString(deck_start.X, deck_start.Y, deck[i], DX.GetColor(255, 0, 255));
+
+                if (deck[i] == "ランダム")
+                    deck[i] = "";
+            }
 
             DX.SetFontSize(defaultFontSize);
-
         }
 
         //カード描画
