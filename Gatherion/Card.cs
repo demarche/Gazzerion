@@ -34,6 +34,12 @@ namespace Gatherion
         static Random rnd = new Random();
         public static Dictionary<string, int> CardGraphDic = new Dictionary<string, int>();
 
+        public Card(int testCard)
+        {
+            elems = new List<int> { -1, -1, -1, -1 };
+            this.testCard = testCard;
+        }
+
         public Card(List<int> elements)
         {
             elems = elements;

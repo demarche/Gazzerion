@@ -82,7 +82,8 @@ namespace Gatherion
 
                 //手札を減らす
                 List<Card> innerHandCard = new List<Card>(myHandCard);
-                innerHandCard[card.handCardID] = null;
+                var rmIndex = innerHandCard.IndexOf(innerHandCard.Where(t => t != null && t.handCardID == card.handCardID).First());
+                innerHandCard[rmIndex] = null;
 
                 //フィールドに手札を置く
                 GameManager innerGame = new GameManager(game,

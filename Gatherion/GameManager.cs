@@ -15,6 +15,8 @@ namespace Gatherion
         public List<Card> handCard_2p = new List<Card>();
         public int skillPt_1p = 0;
         public int skillPt_2p = 0;
+        //手札使用可能状況
+        public bool[,] handCard_Available;
 
         //現在の手番
         public int now_Player = 0;
@@ -86,6 +88,14 @@ namespace Gatherion
                     field[x, y] = new Field();
                 }
             }
+            handCard_Available = new bool[max_Player, handCardNum];
+            for (int p = 0; p < max_Player; p++)
+            {
+                for(int n = 0; n < handCardNum; n++)
+                {
+                    handCard_Available[p, n] = true;
+                }
+            }
 
             //山札を作成
             if (deckIndex_1p == "")
@@ -121,7 +131,6 @@ namespace Gatherion
             //手札を消す
             if (is1P) handCard_1p.RemoveAt(handCardIndex);
             else handCard_2p.RemoveAt(handCardIndex);
-            refleshHandcardID();
 
             return true;
         }
@@ -153,10 +162,13 @@ namespace Gatherion
         //手札番号更新
         public void refleshHandcardID()
         {
-
-            for (int i = 0; i < (is1P ? handCard_1p : handCard_2p).Count(); i++)
+            var handCard = (is1P ? handCard_1p : handCard_2p);
+            var notContainsIDs = Enumerable.Range(0, handCard.Count()).Where(t => !handCard.Select(u => u.handCardID).Contains(t)).ToList();
+            for (int i = 0; i < handCard.Count(); i++)
             {
-                (is1P ? handCard_1p : handCard_2p)[i].handCardID = i;
+                if (handCard[i].handCardID != -1) continue;
+                handCard[i].handCardID = notContainsIDs.First();
+                notContainsIDs.RemoveAt(0);
             }
         }
 

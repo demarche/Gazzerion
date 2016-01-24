@@ -42,7 +42,7 @@ namespace Gatherion
             return false;
         }
 
-        static void waitAndUpdate(Draw draw, GameManager game, int wait, int state)
+        static void waitAndUpdate(Draw draw, GameManager game, int wait, int state, List<bool> isBurst = null, List<Card> cantPutCard = null)
         {
             DX.ClearDrawScreen();
             if (state >= 0)
@@ -51,6 +51,7 @@ namespace Gatherion
                 draw.DrawFieldCard(game);
                 draw.DrawHandCard(game, -1, new Point());
                 draw.DrawState(game);
+                draw.DrawBurst(game, isBurst);
             }
             DX.ScreenFlip();
             DX.WaitVSync(wait);
@@ -140,7 +141,7 @@ namespace Gatherion
                         {
                             state = 5;
                         }
-                        if (clickedLeft(ref mouse_state)&&hand_cur!=-1)
+                        if (clickedLeft(ref mouse_state) && hand_cur != -1 && game.handCard_Available[game.now_Player, (game.is1P?game.handCard_1p:game.handCard_2p)[hand_cur].handCardID])
                         {
                             moving_hand_cur = hand_cur;
                             state = 2;
@@ -179,7 +180,7 @@ namespace Gatherion
                             }
 
                             //手番交代
-                            waitAndUpdate(draw, game, wait, state);
+                            //waitAndUpdate(draw, game, wait, state);
                             game.next();
 
                             state = 3;
@@ -205,7 +206,7 @@ namespace Gatherion
                         }
                         if (isBurst.Count(t => t) != 0)
                         {
-                            waitAndUpdate(draw, game, wait, state);
+                            waitAndUpdate(draw, game, wait, state, isBurst: isBurst.ToList());
                         }
                         for (int i = 0; i < 2; i++)
                         {
@@ -231,7 +232,7 @@ namespace Gatherion
                             if (isAlreadyCheckmate)
                             {
                                 game.insertInfo("両詰み");
-                                waitAndUpdate(draw, game, wait, state);
+                                waitAndUpdate(draw, game, wait, state, isBurst: Enumerable.Range(0, game.max_Player).Select(t => true).ToList());
                                 isAlreadyCheckmate = false;
                                 game.clearField();
                                 candidates = Field.getCandidates(game);
@@ -241,8 +242,8 @@ namespace Gatherion
                             {
                                 game.insertInfo("詰み");
                                 isAlreadyCheckmate = true;
-                                //手番を戻す
                                 waitAndUpdate(draw, game, wait, state);
+                                //手番を戻す
                                 game.next();
                                 state = 3;
                             }
@@ -263,11 +264,14 @@ namespace Gatherion
                     case 5://CPU選択
 
                         var cpu_res = cpu.choice(game);
+                        var target = (game.is1P ? game.handCard_1p : game.handCard_2p);
+                        int cardCur = target.IndexOf(target.Where(t => t.handCardID == cpu_res.card.handCardID).First());
                         if (cpu.me == 0)
-                            game.handCard_1p[cpu_res.card.handCardID].turn = cpu_res.card.turn;
+                            game.handCard_1p[cardCur].turn = cpu_res.card.turn;
                         else
-                            game.handCard_2p[cpu_res.card.handCardID].turn = cpu_res.card.turn;
-                        game.handToField(cpu_res.card.point, cpu_res.card.handCardID);
+                            game.handCard_2p[cardCur].turn = cpu_res.card.turn;
+                        if (!game.handToField(cpu_res.card.point, cardCur))
+                            throw new Exception("CPU fatal error");
 
                         //勝利判定
                         if (game.card_1p.Count() == 0 && game.handCard_1p.Count() == 0 ||

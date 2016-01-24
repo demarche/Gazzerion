@@ -162,8 +162,7 @@ namespace Gatherion
                 ignoreGroup.Add(group);
             }
 
-            Card card = new Card(new List<int> { -1, -1, -1, -1 });
-            card.testCard = group;
+            Card card = new Card(group);
             for (int x = 0; x < fieldSize.Width; x++)
             {
                 for (int y = 0; y < fieldSize.Height; y++)
@@ -377,7 +376,6 @@ namespace Gatherion
         /// 配置可能場所リスト生成
         /// </summary>
         /// <param name="game"></param>
-        /// <param name="cardSize"></param>
         /// <returns></returns>
         public static List<Card> getCandidates(GameManager game)
         {
@@ -388,9 +386,10 @@ namespace Gatherion
             Size cardSize = game.cardSize;
             Size fieldSize = game.fieldSize;
 
-            foreach (var card in (is1P ? game.handCard_1p : game.handCard_2p).Select((v, i) => new { v, i }))
+            foreach (var card in (is1P ? game.handCard_1p : game.handCard_2p))
             {
-                if (card.v == null) continue;
+                if (card == null) continue;
+                game.handCard_Available[game.now_Player, card.handCardID] = false;
                 for (int x = 0; x < fieldSize.Width; x++)
                 {
                     for (int y = 0; y < fieldSize.Height; y++)
@@ -402,21 +401,22 @@ namespace Gatherion
                             {
                                 mycardSize = new Size(cardSize.Height, cardSize.Width);
                             }
-                            card.v.turn = turn;
-                            if (canPut(game.field, new Point(x, y), card.v, mycardSize, is1P, game.initiation, true))
+                            card.turn = turn;
+                            if (canPut(game.field, new Point(x, y), card, mycardSize, is1P, game.initiation, true))
                             {
                                 //低バーストでもない場合は候補に追加
-                                if (!isLowBurst(game, new Point(x, y), card.v, mycardSize))
+                                if (!isLowBurst(game, new Point(x, y), card, mycardSize))
                                 {
-                                    Card cand = new Card(card.v);
+                                    Card cand = new Card(card);
                                     cand.point = new Point(x, y);
                                     candidates.Add(cand);
+                                    game.handCard_Available[game.now_Player, card.handCardID] = true;
                                 }
                             }
                         }
                     }
                 }
-                card.v.turn = 0;
+                card.turn = 0;
             }
 
             return candidates;

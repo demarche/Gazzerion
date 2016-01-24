@@ -137,9 +137,12 @@ namespace Gatherion
         //アシスト表示
         public void DrawAssist(GameManager game, List<Card> candidates, int handCardCur)
         {
+            if (handCardCur < 0) return;
             foreach (var card in candidates)
             {
-                if (card.handCardID != handCardCur || card.turn != (game.is1P ? game.handCard_1p : game.handCard_2p)[handCardCur].turn) continue;
+                if (card.handCardID != (game.is1P ? game.handCard_1p : game.handCard_2p)[handCardCur].handCardID
+                    || card.turn != (game.is1P ? game.handCard_1p : game.handCard_2p)[handCardCur].turn)
+                    continue;
 
                 Size mycardSize = new Size(game.cardSize.Width, game.cardSize.Height);
                 if (card.turn % 2 == 1) mycardSize = new Size(mycardSize.Height, mycardSize.Width);
@@ -147,6 +150,31 @@ namespace Gatherion
                 DX.DrawBox(GridStart.X + (int)(grid_len * card.point.X), GridStart.Y + (int)(grid_len * card.point.Y),
                     GridStart.X + (int)(grid_len * (card.point.X + mycardSize.Width)), GridStart.Y + (int)(grid_len * (card.point.Y + mycardSize.Height)),
                     DX.GetColor(0, 128, 0), 1);
+            }
+        }
+
+        //バースト表示
+        public void DrawBurst(GameManager game, List<bool> isBurst)
+        {
+            if (isBurst == null || isBurst.Count(t => t) == 0) return;
+
+            List<int> burstNum = Enumerable.Range(0, isBurst.Count()).Where(t => isBurst[t]).ToList();
+
+            for (int x = 0; x < fieldSize.Width; x++)
+            {
+                for (int y = 0; y < fieldSize.Height; y++)
+                {
+                    Card card = game.field[x, y].card;
+                    if (card != null && burstNum.Contains(game.field[x, y].group))
+                    {
+                        Size mycardSize = new Size(game.cardSize.Width, game.cardSize.Height);
+                        if (card.turn % 2 == 1) mycardSize = new Size(mycardSize.Height, mycardSize.Width);
+
+                        DX.DrawBox(GridStart.X + (int)(grid_len * x), GridStart.Y + (int)(grid_len * y),
+                            GridStart.X + (int)(grid_len * (x + mycardSize.Width)), GridStart.Y + (int)(grid_len * (y + mycardSize.Height)),
+                            DX.GetColor(255, 0, 0), 1);
+                    }
+                }
             }
         }
 
@@ -169,7 +197,7 @@ namespace Gatherion
 
                 if (is1P && mouse.X >= x && mouse.X < x + handCard_size.Width && mouse.Y >= y && mouse.Y < y + handCard_size.Height) cardOnMouseNum = i;
                 if (is1P && i == hand_cur) continue;
-                DrawCard(x, y, card_1p[i], handCard_size);
+                DrawCard(x, y, card_1p[i], handCard_size, available: game.handCard_Available[0, game.handCard_1p[i].handCardID]);
             }
 
             Point HandCardStart_2P = new Point(0, (int)grid_len);
@@ -179,7 +207,7 @@ namespace Gatherion
                 int y = HandCardStart_2P.Y;
                 if (!is1P && mouse.X >= x && mouse.X < x + handCard_size.Width && mouse.Y >= y && mouse.Y < y + handCard_size.Height) cardOnMouseNum = i;
                 if (!is1P && i == hand_cur) continue;
-                DrawCard(x, y, card_2p[i], handCard_size);
+                DrawCard(x, y, card_2p[i], handCard_size, available: game.handCard_Available[1, game.handCard_2p[i].handCardID]);
             }
 
             return cardOnMouseNum;
@@ -189,7 +217,7 @@ namespace Gatherion
         public Point DrawMovingCard(GameManager game, int hand_cur, Point mouse)
         {
             bool is1P = game.is1P;
-            Card card = is1P ? game.handCard_1p[hand_cur] : game.handCard_2p[hand_cur];
+            Card card = (is1P ? game.handCard_1p : game.handCard_2p)[hand_cur];
             int x = 0, y = 0, fix_x = 0, fix_y = 0;
             Point fieldPt = new Point(-1, -1);
 
@@ -319,67 +347,73 @@ namespace Gatherion
         }
 
         //カード描画
-        public void DrawCard(int x, int y, Card card, Size cardSize = new Size())
+        public void DrawCard(int x, int y, Card card, Size cardScale = new Size(), bool available = true)
         {
             List<int> elems = card.elems;
             int turn = card.turn;
 
-            if (cardSize == new Size()) cardSize = new Size(this.cardScale.Width + 1, this.cardScale.Height + 1);
-            Size cardSizeOrg = new Size((Point)cardSize);
-            if (turn % 2 == 1) cardSize = new Size(cardSize.Height, cardSize.Width);
+            if (cardScale == new Size()) cardScale = new Size(this.cardScale.Width + 1, this.cardScale.Height + 1);
+            Size cardScaleOrg = new Size((Point)cardScale);
+            if (turn % 2 == 1) cardScale = new Size(cardScale.Height, cardScale.Width);
 
             uint col = DX.GetColor(128, 128, 128);
             if (card.imgPath == "")
-                DX.DrawBox(x, y, x + cardSize.Width, y + cardSize.Height, col, 1);
+                DX.DrawBox(x, y, x + cardScale.Width, y + cardScale.Height, col, 1);
             else
             {
                 int myx = x;
                 int myy = y;
-                if (turn >= 2 && turn <= 3) myy += cardSize.Height; 
-                if (turn >= 1 && turn <= 2) myx += cardSize.Width;
+                if (turn >= 2 && turn <= 3) myy += cardScale.Height;
+                if (turn >= 1 && turn <= 2) myx += cardScale.Width;
                 int h, w;
                 DX.GetGraphSize(Card.CardGraphDic[card.imgPath], out w, out h);
-                DX.DrawRotaGraph3(myx, myy, 0,0, (double)cardSizeOrg.Width / w, (double)cardSizeOrg.Height / h, turn * Math.PI/2.0, Card.CardGraphDic[card.imgPath], 0);
+                DX.DrawRotaGraph3(myx, myy, 0, 0, (double)cardScaleOrg.Width / w, (double)cardScaleOrg.Height / h, turn * Math.PI / 2.0, Card.CardGraphDic[card.imgPath], 0);
             }
-            DX.DrawBox(x, y, x + cardSize.Width, y + cardSize.Height, DX.GetColor(256,256,256), 0);
+            DX.DrawBox(x, y, x + cardScale.Width, y + cardScale.Height, DX.GetColor(256, 256, 256), 0);
 
             int defaultFontSize = DX.GetFontSize();
-            int myFontSize = (int)Math.Sqrt(cardSize.Width * cardSize.Height / 32);
+            int myFontSize = (int)Math.Sqrt(cardScale.Width * cardScale.Height / 32);
             DX.SetFontSize(myFontSize);
 
-            for(int i = 0; i < elems.Count(); i++)
+            for (int i = 0; i < elems.Count(); i++)
             {
                 if (elems[i] == -1) continue;
 
                 int sx = 0, sy = 0;
                 int strwidth = DX.GetDrawStringWidth(elementDict[elems[i]], elementDict[elems[i]].Length);
-                switch ((i+turn)%4)
+                switch ((i + turn) % 4)
                 {
                     case 0:
-                        sx = x + cardSize.Width / 2 - strwidth / 2;
+                        sx = x + cardScale.Width / 2 - strwidth / 2;
                         sy = y;
                         break;
                     case 1:
-                        sx = x + cardSize.Width - strwidth;
-                        sy = y + cardSize.Height / 2 - strwidth / 2;
+                        sx = x + cardScale.Width - strwidth;
+                        sy = y + cardScale.Height / 2 - strwidth / 2;
                         break;
                     case 2:
-                        sx = x + cardSize.Width / 2 - strwidth / 2;
-                        sy = y + cardSize.Height - strwidth;
+                        sx = x + cardScale.Width / 2 - strwidth / 2;
+                        sy = y + cardScale.Height - strwidth;
                         break;
                     case 3:
                         sx = x;
-                        sy = y + cardSize.Height / 2 - strwidth / 2;
+                        sy = y + cardScale.Height / 2 - strwidth / 2;
                         break;
                 }
 
                 int fontSize = DX.GetFontSize();
-                DX.DrawBox(sx, sy, sx + fontSize+1, sy + fontSize+1,DX.GetColor(255,255,255)- elementColDict[elems[i]], 0);
+                DX.DrawBox(sx, sy, sx + fontSize + 1, sy + fontSize + 1, DX.GetColor(255, 255, 255) - elementColDict[elems[i]], 0);
                 DX.DrawBox(sx, sy, sx + fontSize, sy + fontSize, elementColDict[elems[i]], 1);
-                DX.DrawString(sx+1, sy+1, elementDict[elems[i]], DX.GetColor(0,0,0));
+                DX.DrawString(sx + 1, sy + 1, elementDict[elems[i]], DX.GetColor(0, 0, 0));
                 DX.DrawString(sx, sy, elementDict[elems[i]], DX.GetColor(255, 255, 255));
             }
             DX.SetFontSize(defaultFontSize);
+
+            if (!available)
+            {
+                DX.DrawQuadrangle(x, y, x + (int)grid_len, y, x + cardScale.Width, y + cardScale.Height, x + cardScale.Width - (int)grid_len, y + cardScale.Height, DX.GetColor(255, 0, 0), 1);
+                DX.DrawQuadrangle(x + cardScale.Width - (int)grid_len, y, x + cardScale.Width, y, x + (int)grid_len, y + cardScale.Height, x, y + cardScale.Height, DX.GetColor(255, 0, 0), 1);
+            }
         }
     }
 }
