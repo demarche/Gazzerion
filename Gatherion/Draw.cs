@@ -315,7 +315,7 @@ namespace Gatherion
 
             for(int i = 0; i < game.max_Player; i++)
             {
-                DX.DrawString(settingStart.X, settingStart.Y, (i + 1) + "Pデッキ", DX.GetColor(255, 255, 255));
+                DX.DrawString(settingStart.X, settingStart.Y + fontSize * 2 * i, (i + 1) + "Pデッキ", DX.GetColor(255, 255, 255));
                 //デッキ情報の開始位置
                 Point deck_start = new Point(settingStart.X, settingStart.Y + fontSize * (i * 2 + 1));
 
