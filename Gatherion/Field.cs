@@ -152,15 +152,9 @@ namespace Gatherion
         }
 
         //バーストチェック
-        public static bool isBurst(GameManager game, Size cardSize, int group, List<int> ignoreGroup = null)
+        public static bool isBurst(GameManager game, Size cardSize, int group)
         {
             Size fieldSize = game.fieldSize;
-
-            //最初の呼び出しは再帰に自分を含めない
-            if (ignoreGroup == null) {
-                ignoreGroup = new List<int>();
-                ignoreGroup.Add(group);
-            }
 
             Card card = new Card(group);
             for (int x = 0; x < fieldSize.Width; x++)

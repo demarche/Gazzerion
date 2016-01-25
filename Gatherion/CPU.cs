@@ -137,10 +137,17 @@ namespace Gatherion
             if (scores.Count() > 0)
             {
                 var scorePair = scores.Select(result => new { v = result, score = (result[game.now_Player].score / noPlayerRange.Select(player => result[player].score).Sum()) });
-                var filtered = scorePair.Where(t => t.v[game.now_Player].innerResult == null || t.score < 100 || t.score >= 100 && noPlayerRange.Select(player => t.v[game.now_Player].innerResult[player].score).Count(result => result >= 100) == 0);
+                var filtered = scorePair.Where(t => t.v[game.now_Player].innerResult == null || t.score < 100 ||
+                t.score >= 100 && noPlayerRange.Select(player => t.v[game.now_Player].innerResult[player].score)
+                .Count(result => result >= 100.0 / (nest / game.max_Player + 1)) == 0);
                 if (filtered.Count() == 0)
                 {
-                    bestPattern = scorePair.OrderByDescending(t => t.score).First().v;
+                    bestPattern = scorePair.Select(t => new {
+                        v = t.v,
+                        score = t.score *
+                        //スコアに内部スコアを掛ける
+                        t.v[game.now_Player].innerResult[game.now_Player].score / noPlayerRange.Select(player => t.v[game.now_Player].innerResult[player].score).Sum()
+                    }).OrderByDescending(t => t.score).First().v;
                 }
                 else
                 {
@@ -159,12 +166,12 @@ namespace Gatherion
             bestPattern[game.now_Player].score += myPatternNum;
 
             //詰みの場合ほかの人がボーナス
-            if (myPatternNum == 0 && game.handCard[game.now_Player].Count() > 0)
+            if (nest != 0 && myPatternNum == 0 && game.handCard[game.now_Player].Count() > 0)
             {
                 for (int i = 0; i < game.max_Player; i++)
                 {
-                    if (i == game.max_Player) continue;
-                    bestPattern[i].score = 100.0 / (nest / game.max_Player + 1);
+                    if (i == game.now_Player) continue;
+                    bestPattern[i].score += 100.0 / ((nest - 1) / game.max_Player + 1);
 
                 }
             }
