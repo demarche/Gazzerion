@@ -284,7 +284,7 @@ namespace Gatherion
         {
             int defaultSize = DX.GetFontSize();
             DX.SetFontSize(64);
-            string title = "Gatherion";
+            string title = "Gazzerion";
             int title_len = DX.GetDrawStringWidth(title, title.Length);
 
             DX.DrawString(screenSize.Width / 2 - title_len / 2, screenSize.Height / 2 - 32, title, DX.GetColor(255,255,255));
