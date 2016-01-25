@@ -28,6 +28,8 @@ namespace Gatherion
         //テスト用カード（配置可能検証用）
         [XmlIgnore]
         public int testCard = -1;
+        //利用可能
+        public bool available = true;
 
         public static Dictionary<string, List<Card>> deckList = new Dictionary<string, List<Card>>();
 

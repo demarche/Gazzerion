@@ -177,27 +177,8 @@ namespace Gatherion
                         card.turn = turn;
                         if (canPut(game.field, new Point(x, y), card, mycardSize, group, game.initiation, true))
                         {
-                            List<int> newIgnoreGroup = new List<int>(ignoreGroup);
-
-                            //別グループの低バーストによる配置不可能を利用したバースト検証
-                            List<bool> lowBurstList = new List<bool>();
-                            fillCard(game.field, new Point(x, y), card, mycardSize);
-                            for (int i = 0; i < game.max_Player; i++)
-                            {
-                                if (newIgnoreGroup.Contains(i)) continue;
-                                newIgnoreGroup.Add(i);
-
-                                //低バースト
-                                if (getSheetsNumber(game, i) < 3 && isBurst(game, cardSize, i, newIgnoreGroup))
-                                {
-                                    lowBurstList.Add(true);
-                                }
-                            }
-                            unfillCard(game.field, new Point(x, y), mycardSize);
-
-                            //低バーストがない場合はバーストしない
-                            if (lowBurstList.Count() == 0)
-                                return false;
+                            card.turn = 0;
+                            return false;
                         }
                     }
                 }
@@ -388,7 +369,7 @@ namespace Gatherion
             foreach (var card in game.nowHandCard)
             {
                 if (card == null) continue;
-                game.handCard_Available[game.now_Player, card.handCardID] = false;
+                card.available = false;
                 for (int x = 0; x < fieldSize.Width; x++)
                 {
                     for (int y = 0; y < fieldSize.Height; y++)
@@ -409,7 +390,7 @@ namespace Gatherion
                                     Card cand = new Card(card);
                                     cand.point = new Point(x, y);
                                     candidates.Add(cand);
-                                    game.handCard_Available[game.now_Player, card.handCardID] = true;
+                                    card.available = true;
                                 }
                             }
                         }

@@ -197,7 +197,7 @@ namespace Gatherion
 
                 if (is1P && mouse.X >= x && mouse.X < x + handCard_size.Width && mouse.Y >= y && mouse.Y < y + handCard_size.Height) cardOnMouseNum = i;
                 if (is1P && i == hand_cur) continue;
-                DrawCard(x, y, card_1p[i], handCard_size, available: game.handCard_Available[0, card_1p[i].handCardID]);
+                DrawCard(x, y, card_1p[i], handCard_size);
             }
 
             Point HandCardStart_2P = new Point(0, (int)grid_len);
@@ -207,7 +207,7 @@ namespace Gatherion
                 int y = HandCardStart_2P.Y;
                 if (!is1P && mouse.X >= x && mouse.X < x + handCard_size.Width && mouse.Y >= y && mouse.Y < y + handCard_size.Height) cardOnMouseNum = i;
                 if (!is1P && i == hand_cur) continue;
-                DrawCard(x, y, card_2p[i], handCard_size, available: game.handCard_Available[1, card_2p[i].handCardID]);
+                DrawCard(x, y, card_2p[i], handCard_size);
             }
 
             return cardOnMouseNum;
@@ -343,7 +343,7 @@ namespace Gatherion
         }
 
         //カード描画
-        public void DrawCard(int x, int y, Card card, Size cardScale = new Size(), bool available = true)
+        public void DrawCard(int x, int y, Card card, Size cardScale = new Size())
         {
             List<int> elems = card.elems;
             int turn = card.turn;
@@ -405,7 +405,7 @@ namespace Gatherion
             }
             DX.SetFontSize(defaultFontSize);
 
-            if (!available)
+            if (!card.available)
             {
                 DX.DrawQuadrangle(x, y, x + (int)grid_len, y, x + cardScale.Width, y + cardScale.Height, x + cardScale.Width - (int)grid_len, y + cardScale.Height, DX.GetColor(255, 0, 0), 1);
                 DX.DrawQuadrangle(x + cardScale.Width - (int)grid_len, y, x + cardScale.Width, y, x + (int)grid_len, y + cardScale.Height, x, y + cardScale.Height, DX.GetColor(255, 0, 0), 1);

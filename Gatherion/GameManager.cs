@@ -13,8 +13,6 @@ namespace Gatherion
         public List<Card>[] handCard;
         public int skillPt_1p = 0;
         public int skillPt_2p = 0;
-        //手札使用可能状況
-        public bool[,] handCard_Available;
 
         //現在の手番
         public int now_Player = 0;
@@ -110,14 +108,6 @@ namespace Gatherion
             //カード初期化
             deck = new List<Card>[max_Player];
             handCard = new List<Card>[max_Player];
-            handCard_Available = new bool[max_Player, handCardNum];
-            for (int p = 0; p < max_Player; p++)
-            {
-                for (int n = 0; n < handCardNum; n++)
-                {
-                    handCard_Available[p, n] = true;
-                }
-            }
             //山札を作成
             if (deckIndexes == null) deckIndexes = new string[max_Player];
             foreach (var deckIndex in deckIndexes.Select((v, i) => new { v, i }))

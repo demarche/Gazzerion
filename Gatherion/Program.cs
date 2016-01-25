@@ -141,7 +141,7 @@ namespace Gatherion
                         {
                             state = 5;
                         }
-                        if (clickedLeft(ref mouse_state) && hand_cur != -1 && game.handCard_Available[game.now_Player, game.nowHandCard[hand_cur].handCardID])
+                        if (clickedLeft(ref mouse_state) && hand_cur != -1 && game.nowHandCard[hand_cur].available)
                         {
                             moving_hand_cur = hand_cur;
                             state = 2;
@@ -248,7 +248,7 @@ namespace Gatherion
                         }
                         break;
                     case 4://勝利
-                        draw.DrawWinnerMessage((game.is1P ? "1" : "2") + "P WIN!!!!");
+                        draw.DrawWinnerMessage((game.now_Player + 1) + "P WIN!!!!");
                         if (clickedLeft(ref mouse_state))
                         {
                             state = -1;
