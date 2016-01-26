@@ -59,8 +59,6 @@ namespace Gatherion
             //候補のスコア
             List<resultSet[]> scores = new List<resultSet[]>();
 
-            int myPatternNum = 0;
-
             foreach (var card_vi in candidates.Select((v,i)=>new { v,i}))
             {
                 Card card = card_vi.v;
@@ -100,7 +98,12 @@ namespace Gatherion
                 {
                     cand[i] = new resultSet();
                 }
-                if (Field.isBurst(innerGame, cardSize, tmpConnect))
+                if (superGame.deck[game.now_Player].Count() == 0 && innerGame.handCard[game.now_Player].Count(t => t != null) == 0)
+                {
+                    //勝利の場合
+                    cand[game.now_Player].score += 1000.0 / (nest / game.max_Player + 1);
+                }
+                else if (Field.isBurst(innerGame, cardSize, tmpConnect))
                 {
                     //バーストチェック
                     int burstNum = Field.Burst(innerGame, cardSize, tmpConnect);
@@ -129,9 +132,6 @@ namespace Gatherion
                 {
                     game.initiation[i] = tmpInit[i];
                 }
-
-                myPatternNum++;
-
             }
 
             //候補から最善手を予測
@@ -142,19 +142,14 @@ namespace Gatherion
                 var scorePair = scores.Select(result => new { v = result, score = (result[game.now_Player].score / noPlayerRange.Select(player => result[player].score).Sum()) });
                 var filtered = scorePair.Where(t => t.v[game.now_Player].innerResult == null ||
                     (!t.v[game.now_Player].innerResult[game.now_Player].isCheckmate && !t.v[game.now_Player].isCheckmate));
-                if (filtered.Count() == 0)
+                //if (filtered.Count() == 0)
                 {
-                    bestPattern = scorePair.Select(t => new {
-                        v = t.v,
-                        score = t.score *
-                        //スコアに内部スコアを掛ける
-                        t.v[game.now_Player].innerResult[game.now_Player].score / noPlayerRange.Select(player => t.v[game.now_Player].innerResult[player].score).Average()
-                    }).OrderByDescending(t => t.score).First().v;
+                    bestPattern = scorePair.OrderByDescending(t => t.score).First().v;
                 }
-                else
+                /*else
                 {
                     bestPattern = filtered.OrderByDescending(t => t.score).First().v;
-                }
+                }*/
             }
             else
             {
@@ -165,10 +160,10 @@ namespace Gatherion
             }
 
             //自分の手数を追加
-            bestPattern[game.now_Player].score += myPatternNum;
+            bestPattern[game.now_Player].score += candidates.Count();
 
             //詰みの場合ほかの人がボーナス
-            if (nest != 0 && myPatternNum == 0 && game.handCard[game.now_Player].Count() > 0)
+            if (nest != 0 && candidates.Count() == 0 && game.handCard[game.now_Player].Count() > 0)
             {
                 bestPattern[game.now_Player].isCheckmate = true;
                 for (int i = 0; i < game.max_Player; i++)
