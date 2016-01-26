@@ -27,6 +27,8 @@ namespace Gatherion
             public double score;
             public Card card;
             public resultSet[] innerResult;
+            public bool isCheckmate = false;
+            public bool isBurst = false;
             
             public resultSet() { score = 1.0; card = new Card(); }
 
@@ -108,6 +110,7 @@ namespace Gatherion
                         cand[game.now_Player].score += (double)(100 + (burstNum - 3) * 10) / (nest / game.max_Player + 1);
                         var tmpcand = getScore(innerGame, nest: nest + 1, step: 1);
                         cand[game.now_Player].innerResult = tmpcand;
+                        cand[game.now_Player].isBurst = true;
                     }
                 }
                 else
@@ -137,16 +140,15 @@ namespace Gatherion
             if (scores.Count() > 0)
             {
                 var scorePair = scores.Select(result => new { v = result, score = (result[game.now_Player].score / noPlayerRange.Select(player => result[player].score).Sum()) });
-                var filtered = scorePair.Where(t => t.v[game.now_Player].innerResult == null || t.score < 100 ||
-                t.score >= 100 && noPlayerRange.Select(player => t.v[game.now_Player].innerResult[player].score)
-                .Count(result => result >= 100.0 / (nest / game.max_Player + 1)) == 0);
+                var filtered = scorePair.Where(t => t.v[game.now_Player].innerResult == null ||
+                    (!t.v[game.now_Player].innerResult[game.now_Player].isCheckmate && !t.v[game.now_Player].isCheckmate));
                 if (filtered.Count() == 0)
                 {
                     bestPattern = scorePair.Select(t => new {
                         v = t.v,
                         score = t.score *
                         //スコアに内部スコアを掛ける
-                        t.v[game.now_Player].innerResult[game.now_Player].score / noPlayerRange.Select(player => t.v[game.now_Player].innerResult[player].score).Sum()
+                        t.v[game.now_Player].innerResult[game.now_Player].score / noPlayerRange.Select(player => t.v[game.now_Player].innerResult[player].score).Average()
                     }).OrderByDescending(t => t.score).First().v;
                 }
                 else
@@ -168,10 +170,11 @@ namespace Gatherion
             //詰みの場合ほかの人がボーナス
             if (nest != 0 && myPatternNum == 0 && game.handCard[game.now_Player].Count() > 0)
             {
+                bestPattern[game.now_Player].isCheckmate = true;
                 for (int i = 0; i < game.max_Player; i++)
                 {
                     if (i == game.now_Player) continue;
-                    bestPattern[i].score += 100.0 / ((nest - 1) / game.max_Player + 1);
+                    bestPattern[i].score += 100.0 / (nest / game.max_Player + 1);
 
                 }
             }
