@@ -259,7 +259,7 @@ namespace Gatherion
                         var cpu_res = cpu.choice(game);
                         int cardCur = game.nowHandCard.IndexOf(game.nowHandCard.Where(t => t.handCardID == cpu_res.card.handCardID).First());
                         //CPUの手の回転
-                        game.handCard[cpu.me][cardCur].turn = cpu_res.card.turn;
+                        game.handCard[game.now_Player][cardCur].turn = cpu_res.card.turn;
                         if (!game.handToField(cpu_res.card.point, cardCur))
                             throw new Exception("CPU fatal error");
 

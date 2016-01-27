@@ -45,7 +45,7 @@ namespace Gatherion
         resultSet[] getScore(GameManager game, int nest = 0, int step = 1)
         {
             //手札がない
-            if (Enumerable.Range(0, game.max_Player).Select(player => game.handCard[player].Count()).Count(num => num != 0) == 0)
+            if (game.handCard[game.now_Player].Count()==0)
             {
                 return new resultSet[game.max_Player];
             }
@@ -101,25 +101,23 @@ namespace Gatherion
                 if (superGame.deck[game.now_Player].Count() == 0 && innerGame.handCard[game.now_Player].Count(t => t != null) == 0)
                 {
                     //勝利の場合
-                    cand[game.now_Player].score += 1000.0 / (nest / game.max_Player + 1);
+                    cand[game.now_Player].score += 10000.0 - 1000.0 / (nest / game.max_Player + 1);
                 }
                 else if (Field.isBurst(innerGame, cardSize, tmpConnect))
                 {
                     //バーストチェック
                     int burstNum = Field.Burst(innerGame, cardSize, tmpConnect);
-                    if (burstNum >= 3)
-                    {
-                        //3以上のバーストのみスコア
-                        cand[game.now_Player].score += (double)(100 + (burstNum - 3) * 10) / (nest / game.max_Player + 1);
-                        var tmpcand = getScore(innerGame, nest: nest + 1, step: 1);
-                        cand[game.now_Player].innerResult = tmpcand;
-                        cand[game.now_Player].isBurst = true;
-                    }
+                    cand[game.now_Player].score += (1000.0 + (burstNum - 3) * 10.0) - 100.0 / (nest / game.max_Player + 1);
+                    innerGame.next();
+                    var tmpcand = getScore(innerGame, nest: nest + 1, step: 1);
+                    cand[game.now_Player].innerResult = tmpcand;
+                    cand[game.now_Player].isBurst = true;
                 }
                 else
                 {
                     //バーストしない場合再帰
-                    if (!(superGame.initiation.Count(t => t == true) >= 1 && nest >= 1))
+                    int initCount = superGame.initiation.Count(t => t == true);
+                    if (initCount == 0 || initCount == 1 && nest <= 1 || nest <= 0)
                         cand = getScore(innerGame, nest: nest + 1, step: 1);
                 }
                 //カード情報を候補に追加
@@ -163,26 +161,15 @@ namespace Gatherion
             bestPattern[game.now_Player].score += candidates.Count();
 
             //詰みの場合ほかの人がボーナス
-            if (nest != 0 && candidates.Count() == 0 && game.handCard[game.now_Player].Count() > 0)
+            if (nest != 0 && candidates.Count() == 0)
             {
                 bestPattern[game.now_Player].isCheckmate = true;
                 for (int i = 0; i < game.max_Player; i++)
                 {
                     if (i == game.now_Player) continue;
-                    bestPattern[i].score += 100.0 / (nest / game.max_Player + 1);
-
+                    bestPattern[i].score += 1000.0 - 100.0 / (nest / game.max_Player + 1);
                 }
             }
-            /*
-            if (nest <= 0)
-            {
-                string write = "";
-                for (int i = 0; i < nest * 2; i++) write += "\t";
-                if (!isMe) write += "\t";
-                write += string.Format("{0}/{1}", bestPattern[0].score, bestPattern[1].score);
-                if (bestPattern[isMe ? 0 : 1].innerResult != null) write += string.Format(" {0}/{1}", bestPattern[isMe ? 0 : 1].innerResult[0].score, bestPattern[isMe ? 0 : 1].innerResult[1].score);
-                Console.WriteLine(write);
-            }*/
 
             return bestPattern;
         }
