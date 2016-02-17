@@ -1,3 +1,6 @@
+# *Project Moved*
+<https://github.com/demarche/GazzeriOnHaskell>
+
 # Gazzerion?
 
 カードゲーム
